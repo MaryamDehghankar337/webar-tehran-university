@@ -4,16 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>WebAR - دانشگاه تهران</title>
 
-    <!-- کتابخانه‌ها -->
+    <!-- کتابخانه‌ها از CDN پایدار -->
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/ar.js@2.2.2/aframe/aframe-ar.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/ar.js@2.2.2/aframe/aframe-gps.js"></script>
+    <script src="https://rawcdn.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <script src="https://rawcdn.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-gps.js"></script>
 
     <style>
         * { margin: 0; padding: 0; }
-        body { overflow: hidden; background: #000; font-family: Arial, sans-serif; }
+        body { overflow: hidden; background: #000; font-family: Arial, sans-serif; touch-action: none; user-select: none; }
 
         /* صفحه بارگذاری */
         #loading {
@@ -46,7 +48,7 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* پنل دیباگ */
+        /* پنل دیباگ (اختیاری، برای عیب‌یابی) */
         #debug-panel {
             position: absolute;
             bottom: 10px;
@@ -72,27 +74,12 @@
         #debug-panel .success { color: #6bcb77; }
         #debug-panel .info { color: #4d96ff; }
 
-        /* ویدیوی اشکال‌زدایی (مخفی اما فعال) */
-        #debug-video {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            width: 120px;
-            height: 90px;
-            border: 2px solid red;
-            z-index: 999;
-            border-radius: 8px;
-            opacity: 0.8;
-            object-fit: cover;
-            display: none; /* اگر می‌خواهید ببینید دوربین کار می‌کند، این خط را کامنت کنید */
-        }
-
         #info {
             position: absolute;
             top: 20px;
             left: 50%;
             transform: translateX(-50%);
-            font-size: 0.9rem;
+            font-size: 1rem;
             color: white;
             background: rgba(0,0,0,0.75);
             padding: 6px 16px;
@@ -102,23 +89,31 @@
             white-space: nowrap;
             border: 1px solid rgba(255,215,0,0.2);
         }
+
         #navigator {
             position: absolute;
             bottom: calc(30vh + 30px);
             left: 50%;
             transform: translateX(-50%);
-            display: flex;
-            align-items: center;
+            font-size: 1.5rem;
+            color: white;
             background: rgba(0,0,0,0.75);
             padding: 8px 18px;
             border-radius: 50px;
             z-index: 100;
-            gap: 10px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
             border: 1px solid rgba(255,215,0,0.2);
             direction: ltr;
         }
-        #navigator .arrow { font-size: 1.8rem; }
-        #navigator .text { font-size: 1rem; color: white; }
+        #navigator .arrow {
+            transition: transform 0.2s ease-out;
+        }
+        #navigator .text {
+            font-size: 1.2rem;
+        }
+
         #coords {
             position: absolute;
             bottom: calc(30vh + 90px);
@@ -133,6 +128,7 @@
             z-index: 100;
             direction: ltr;
         }
+
         #status-dot {
             display: inline-block;
             width: 8px;
@@ -153,25 +149,22 @@
 
 <body>
 
-    <!-- Loading -->
+    <!-- صفحه بارگذاری -->
     <div id="loading">
         <div class="spinner"></div>
         <span>📷 در حال راه‌اندازی دوربین...</span>
         <span style="font-size:0.8rem; opacity:0.6; margin-top:10px;">لطفاً صبر کنید</span>
     </div>
 
-    <!-- المان ویدیوی مخفی برای تست دوربین -->
-    <video id="debug-video" autoplay playsinline muted></video>
-
-    <!-- ====== صحنه AR با تنظیمات ضد صفحه سیاه ====== -->
+    <!-- ====== صحنه AR ====== -->
     <a-scene 
         id="scene"
+        embedded 
         arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono;"
         renderer="antialias: true; alpha: false;"
         vr-mode-ui="enabled: false"
-        embedded
     >
-        <!-- دوربین GPS (بدون rotation-reader برای جلوگیری از اختلال) -->
+        <!-- دوربین GPS (بدون rotation-reader برای جلوگیری از صفحه سیاه) -->
         <a-camera id="camera" gps-camera position="0 1.6 0"></a-camera>
 
         <!-- شیء هدف (مختصات موقعیت فعلی شما برای تست سریع) -->
@@ -196,9 +189,17 @@
                 ></a-text>
             </a-entity>
         </a-entity>
+
+        <!-- یک شیء دوم (کره قرمز) برای تست بیشتر - می‌توانید کامنت کنید -->
+        <a-entity
+            gps-entity-place="latitude: 35.693700; longitude: 51.559450;"
+            scale="0.3 0.3 0.3"
+        >
+            <a-sphere color="red" animation="property: rotation; to: 0 360 0; loop: true; dur: 10000;"></a-sphere>
+        </a-entity>
     </a-scene>
 
-    <!-- ====== المان‌های UI ====== -->
+    <!-- ====== UI ====== -->
     <div id="info">
         <span id="status-dot" class="waiting"></span>
         <span id="distance-text">دریافت GPS...</span>
@@ -219,7 +220,7 @@
 
     <script>
         // ============================================================
-        //  دیباگ
+        //  دیباگ ساده
         // ============================================================
         const logContainer = document.getElementById('log-content');
         function addLog(message, type = 'info') {
@@ -239,7 +240,6 @@
         const TARGET_LNG = 51.559429;
         let isGpsReady = false;
         let updateInterval = null;
-        let gpsChecked = false;
 
         const scene = document.getElementById('scene');
         const cameraEl = document.getElementById('camera');
@@ -249,20 +249,17 @@
         const arrowEl = document.getElementById('arrow');
         const directionText = document.getElementById('direction-text');
         const gpsCoordsEl = document.getElementById('gps-coords');
-        const debugVideo = document.getElementById('debug-video');
 
         function hideLoading() {
             if (loading.classList.contains('hidden')) return;
             loading.classList.add('hidden');
             setTimeout(() => { loading.style.display = 'none'; }, 500);
-            addLog('✅ صفحه بارگذاری مخفی شد', 'success');
+            addLog('✅ بارگذاری کامل شد', 'success');
         }
 
-        function showErrorStatus(msg) {
-            statusDot.className = 'error';
-            distanceText.textContent = '⚠️ ' + msg;
-        }
-
+        // ============================================================
+        //  توابع محاسباتی
+        // ============================================================
         function computeBearing(lat1, lon1, lat2, lon2) {
             const φ1 = lat1 * Math.PI/180;
             const φ2 = lat2 * Math.PI/180;
@@ -285,55 +282,15 @@
         }
 
         // ============================================================
-        //  [مهم] تست مستقیم دوربین با یک ویدیوی جداگانه
-        // ============================================================
-        function testCameraDirectly() {
-            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: 'environment', width: { ideal: 640 } } 
-                })
-                .then(function(stream) {
-                    addLog('✅ [مستقیم] دوربین با موفقیت باز شد!', 'success');
-                    // اگر می‌خواهید تصویر دوربین را در ویدیوی کوچک ببینید، این خط را فعال کنید:
-                    // debugVideo.srcObject = stream;
-                    // debugVideo.style.display = 'block';
-                    // debugVideo.play();
-                    
-                    // استریم را می‌بندیم تا به AR.js تداخل نکند (چون AR.js خودش باز می‌کند)
-                    // اما اینجا فقط برای تست گرفتن استریم انجام شد.
-                    stream.getTracks().forEach(t => t.stop());
-                })
-                .catch(function(err) {
-                    addLog(`❌ [مستقیم] خطای دوربین: ${err.message}`, 'error');
-                });
-            }
-        }
-
-        // ============================================================
-        //  بررسی ثبت کامپوننت‌ها
-        // ============================================================
-        function checkComponents() {
-            if (gpsChecked) return;
-            
-            const camComp = cameraEl.components['gps-camera'];
-            const targetComp = document.getElementById('target')?.components['gps-entity-place'];
-            
-            if (camComp && targetComp) {
-                gpsChecked = true;
-                addLog('✅ کامپوننت‌های GPS ثبت شدند!', 'success');
-                updateNavigation();
-            } else {
-                addLog('⏳ در انتظار ثبت کامپوننت‌های GPS...', 'warn');
-            }
-        }
-
-        // ============================================================
         //  ناوبری
         // ============================================================
         function updateNavigation() {
             try {
                 const camComp = cameraEl.components['gps-camera'];
-                if (!camComp) return;
+                if (!camComp) {
+                    addLog('⏳ در انتظار GPS...', 'warn');
+                    return;
+                }
                 if (!camComp.currentCoords) {
                     if (!isGpsReady) {
                         statusDot.className = 'waiting';
@@ -351,6 +308,7 @@
                 if (!isGpsReady) {
                     isGpsReady = true;
                     addLog(`📍 موقعیت: ${userLat.toFixed(6)}, ${userLng.toFixed(6)}`, 'success');
+                    hideLoading();
                 }
                 
                 statusDot.className = 'active';
@@ -359,24 +317,36 @@
                 const dist = computeDistance(userLat, userLng, TARGET_LAT, TARGET_LNG);
                 distanceText.textContent = `${Math.round(dist)} متر تا دانشکده`;
                 
-                // ساده‌سازی جهت‌یابی (چون rotation-reader حذف شده، از یک روش جایگزین استفاده می‌کنیم)
-                // فعلاً فقط فاصله را نشان می‌دهیم تا مطمئن شویم GPS کار می‌کند
-                directionText.textContent = `📍 ${Math.round(dist)} متر`;
+                // محاسبه جهت
+                const bearingToTarget = computeBearing(userLat, userLng, TARGET_LAT, TARGET_LNG);
+                const heading = cameraEl.getAttribute('rotation')?.y || 0;
+                
+                let diff = (bearingToTarget - heading + 360) % 360;
+                let instruction, arrowRot;
 
-                // اگر فاصله کمتر از ۱۰ متر بود، بگو رسیدی
+                if (diff > 315 || diff <= 45) {
+                    instruction = 'جلو';
+                    arrowRot = 'rotate(0deg)';
+                } else if (diff > 45 && diff <= 135) {
+                    instruction = 'راست';
+                    arrowRot = 'rotate(90deg)';
+                } else if (diff > 135 && diff <= 225) {
+                    instruction = 'عقب';
+                    arrowRot = 'rotate(180deg)';
+                } else {
+                    instruction = 'چپ';
+                    arrowRot = 'rotate(270deg)';
+                }
+
                 if (dist < 10) {
                     directionText.textContent = '🎯 رسیدید!';
                     arrowEl.style.display = 'none';
                     distanceText.textContent = '✅ رسیدید!';
-                    addLog('🎯 کاربر به هدف رسید!', 'success');
+                    addLog('🎯 به هدف رسیدید!', 'success');
                 } else {
+                    directionText.textContent = instruction;
                     arrowEl.style.display = 'block';
-                    arrowEl.style.transform = 'rotate(0deg)';
-                }
-
-                // مخفی کردن لودینگ
-                if (!loading.classList.contains('hidden')) {
-                    hideLoading();
+                    arrowEl.style.transform = arrowRot;
                 }
 
             } catch (e) {
@@ -385,37 +355,28 @@
         }
 
         // ============================================================
-        //  راه‌اندازی اصلی
+        //  راه‌اندازی
         // ============================================================
         function init() {
             addLog('🚀 شروع WebAR', 'info');
             addLog(`🎯 هدف: ${TARGET_LAT}, ${TARGET_LNG}`, 'info');
 
-            // تست مستقیم دوربین (برای اطمینان)
-            testCameraDirectly();
-
-            // رویدادهای صحنه
+            // رویداد بارگذاری صحنه
             scene.addEventListener('loaded', () => {
                 addLog('✅ صحنه بارگذاری شد', 'success');
                 hideLoading();
-                // بعد از ۱ ثانیه بررسی کن
-                setTimeout(checkComponents, 1000);
             });
 
+            // خطاها
             scene.addEventListener('arjs-error', ev => {
                 addLog(`❌ AR.js error: ${JSON.stringify(ev.detail)}`, 'error');
-                showErrorStatus('خطای AR.js');
                 hideLoading();
             });
 
             scene.addEventListener('camera-error', ev => {
                 addLog(`❌ دوربین error: ${JSON.stringify(ev.detail)}`, 'error');
-                showErrorStatus('خطای دوربین');
                 hideLoading();
             });
-
-            // بررسی دوره‌ای
-            setInterval(checkComponents, 2000);
 
             // تایمر اضطراری
             setTimeout(() => {
@@ -423,7 +384,7 @@
                     addLog('⏰ تایمر اضطراری', 'warn');
                     hideLoading();
                 }
-            }, 10000);
+            }, 8000);
 
             // شروع ناوبری
             updateInterval = setInterval(updateNavigation, 500);
