@@ -41,7 +41,7 @@
             position: fixed;
             left: 10px;
             right: 10px;
-            bottom: 120px;
+            bottom: 140px;
             max-height: 30vh;
             background: rgba(0,0,0,0.85);
             color: #8f8;
@@ -115,6 +115,27 @@
         #statusDot.active { background: #4caf50; }
         #statusDot.error { background: #f44336; }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+        #retryBtn {
+            position: fixed;
+            bottom: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 200;
+            background: #FFD700;
+            color: #000;
+            border: none;
+            border-radius: 30px;
+            padding: 10px 24px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(255,215,0,0.4);
+            display: none;
+            transition: all 0.3s;
+        }
+        #retryBtn:hover { background: #ffed4a; transform: translateX(-50%) scale(1.05); }
+        #retryBtn:active { transform: translateX(-50%) scale(0.95); }
     </style>
 </head>
 
@@ -132,10 +153,8 @@
         renderer="antialias: true; alpha: false;"
         vr-mode-ui="enabled: false"
     >
-        <!-- دوربین با gps-camera (برای نمایش تصویر دوربین ضروری است) -->
         <a-camera id="camera" gps-camera position="0 1.6 0"></a-camera>
 
-        <!-- شیء هدف (در موقعیت کاربر قرار می‌گیرد) -->
         <a-entity id="target" visible="false">
             <a-entity look-at="#camera">
                 <a-box
@@ -162,6 +181,7 @@
     </div>
     <div id="bottomBar">منتظر موقعیت</div>
     <div id="coordsBox">📍 <span id="coordsText">--</span></div>
+    <button id="retryBtn">🔄 تلاش مجدد GPS</button>
     <div id="debug"></div>
 
     <script>
@@ -190,13 +210,19 @@
         const targetEl = document.getElementById('target');
         const cameraEl = document.getElementById('camera');
         const scene = document.getElementById('scene');
+        const retryBtn = document.getElementById('retryBtn');
 
         let userLat = null;
         let userLng = null;
         let targetLat = null;
         let targetLng = null;
         let updateInterval = null;
-        let gpsChecked = false;
+        let gpsReady = false;
+        let gpsAttempted = false;
+
+        // موقعیت پیش‌فرض (تهران - دانشکده فنی)
+        const DEFAULT_LAT = 35.7244;
+        const DEFAULT_LNG = 51.3878;
 
         // ============================================================
         //  توابع محاسباتی
@@ -238,37 +264,22 @@
         }
 
         // ============================================================
-        //  بررسی ثبت کامپوننت GPS
+        //  تنظیم موقعیت هدف (با موقعیت داده شده)
         // ============================================================
-        function checkGpsComponent() {
-            if (gpsChecked) return;
-            const camComp = cameraEl.components['gps-camera'];
-            if (camComp) {
-                gpsChecked = true;
-                dbg('✅ gps-camera ثبت شد', 'ok');
-                if (userLat !== null && userLng !== null) {
-                    setTargetPosition(userLat, userLng);
-                }
-            } else {
-                dbg('⏳ در انتظار ثبت gps-camera...', 'warn');
-            }
-        }
-
-        // ============================================================
-        //  تنظیم موقعیت هدف
-        // ============================================================
-        function setTargetPosition(lat, lng) {
+        function setTargetPosition(lat, lng, isDefault = false) {
             targetLat = lat;
             targetLng = lng;
             targetEl.setAttribute('gps-entity-place', `latitude: ${lat}; longitude: ${lng};`);
             targetEl.setAttribute('visible', 'true');
-            dbg(`🎯 هدف در موقعیت ${lat}, ${lng} قرار گرفت`, 'ok');
+            dbg(`🎯 هدف در موقعیت ${lat.toFixed(6)}, ${lng.toFixed(6)} قرار گرفت${isDefault ? ' (پیش‌فرض)' : ''}`, 'ok');
             bottomBar.textContent = '🎯 شیء در جلوی شماست';
+            coordsText.textContent = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
             if (!loading.classList.contains('hidden')) hideLoading();
 
             if (updateInterval) clearInterval(updateInterval);
             updateInterval = setInterval(updateNav, 500);
             dbg('🔄 ناوبری فعال شد', 'info');
+            retryBtn.style.display = 'none';
         }
 
         // ============================================================
@@ -299,34 +310,43 @@
                 dbg('❌ GPS پشتیبانی نمی‌شود', 'err');
                 statusDot.className = 'error';
                 distText.textContent = 'GPS پشتیبانی نمی‌شود';
+                setTargetPosition(DEFAULT_LAT, DEFAULT_LNG, true);
                 return;
             }
 
-            dbg('📍 درخواست موقعیت...', 'info');
+            if (gpsAttempted) {
+                dbg('🔄 تلاش مجدد GPS...', 'info');
+            } else {
+                dbg('📍 درخواست موقعیت GPS...', 'info');
+            }
+            gpsAttempted = true;
+            statusDot.className = 'waiting';
+            distText.textContent = 'دریافت GPS...';
+            bottomBar.textContent = 'در حال دریافت موقعیت...';
+            retryBtn.style.display = 'none';
+
             navigator.geolocation.getCurrentPosition(
                 (pos) => {
                     userLat = pos.coords.latitude;
                     userLng = pos.coords.longitude;
-                    dbg(`✅ موقعیت: ${userLat}, ${userLng}`, 'ok');
+                    dbg(`✅ موقعیت دریافت شد: ${userLat.toFixed(6)}, ${userLng.toFixed(6)}`, 'ok');
                     statusDot.className = 'active';
-                    coordsText.textContent = `${userLat.toFixed(6)}, ${userLng.toFixed(6)}`;
-
-                    const camComp = cameraEl.components['gps-camera'];
-                    if (camComp) setTargetPosition(userLat, userLng);
-                    else dbg('⏳ منتظر ثبت gps-camera...', 'warn');
-
-                    hideLoading();
+                    gpsReady = true;
+                    setTargetPosition(userLat, userLng);
                 },
                 (err) => {
                     dbg(`❌ خطای GPS: ${err.message}`, 'err');
                     statusDot.className = 'error';
-                    userLat = 35.7244;
-                    userLng = 51.3878;
-                    const camComp = cameraEl.components['gps-camera'];
-                    if (camComp) setTargetPosition(userLat, userLng);
-                    hideLoading();
+                    distText.textContent = 'خطا در GPS';
+                    bottomBar.textContent = '⚠️ GPS در دسترس نیست';
+                    // استفاده از موقعیت پیش‌فرض
+                    userLat = DEFAULT_LAT;
+                    userLng = DEFAULT_LNG;
+                    setTargetPosition(DEFAULT_LAT, DEFAULT_LNG, true);
+                    // نمایش دکمه تلاش مجدد
+                    retryBtn.style.display = 'block';
                 },
-                { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+                { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
             );
         }
 
@@ -338,14 +358,10 @@
 
             scene.addEventListener('loaded', () => {
                 dbg('✅ صحنه بارگذاری شد', 'ok');
-                const checkInterval = setInterval(() => {
-                    checkGpsComponent();
-                    if (gpsChecked) clearInterval(checkInterval);
-                }, 1000);
-
+                // اگر تا ۳ ثانیه بعد GPS نیامد، لودینگ را مخفی کن
                 setTimeout(() => {
                     if (!loading.classList.contains('hidden')) {
-                        dbg('⏰ تایمر اضطراری', 'warn');
+                        dbg('⏰ تایمر اضطراری: لودینگ مخفی شد', 'warn');
                         hideLoading();
                     }
                 }, 3000);
@@ -361,20 +377,26 @@
                 hideLoading();
             });
 
+            // درخواست GPS
             getLocation();
 
+            // اگر GPS تا ۱۵ ثانیه جواب نداد، از پیش‌فرض استفاده کن
             setTimeout(() => {
-                if (userLat === null) {
-                    dbg('⏰ زمان GPS تمام شد، استفاده از پیش‌فرض', 'warn');
-                    userLat = 35.7244;
-                    userLng = 51.3878;
-                    const camComp = cameraEl.components['gps-camera'];
-                    if (camComp) setTargetPosition(userLat, userLng);
-                    statusDot.className = 'active';
-                    coordsText.textContent = `${userLat.toFixed(6)}, ${userLng.toFixed(6)}`;
-                    hideLoading();
+                if (!gpsReady && targetLat === null) {
+                    dbg('⏰ زمان GPS به پایان رسید، استفاده از پیش‌فرض', 'warn');
+                    userLat = DEFAULT_LAT;
+                    userLng = DEFAULT_LNG;
+                    setTargetPosition(DEFAULT_LAT, DEFAULT_LNG, true);
+                    statusDot.className = 'error';
+                    retryBtn.style.display = 'block';
                 }
-            }, 15000);
+            }, 16000);
+
+            // دکمه تلاش مجدد
+            retryBtn.addEventListener('click', () => {
+                dbg('🔄 کاربر درخواست تلاش مجدد GPS کرد', 'info');
+                getLocation();
+            });
         }
 
         window.onerror = function(msg, src, line) {
