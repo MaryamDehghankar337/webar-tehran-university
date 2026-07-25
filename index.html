@@ -5,16 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>WebAR - دانشکده فنی تهران</title>
 
-    <!-- نسخه‌ی پایدار AR.js (2.2.2) -->
+    <!-- A-Frame و AR.js -->
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/ar.js@2.2.2/aframe/aframe-ar.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/ar.js@2.2.2/aframe/aframe-gps.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ar.js@2.2.2/aframe/aframe-ar.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ar.js@2.2.2/aframe/aframe-gps.min.js"></script>
 
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { overflow: hidden; background: #000; font-family: Arial, sans-serif; }
 
-        /* بارگذاری */
         #loading {
             position: fixed;
             top: 0; left: 0;
@@ -28,10 +27,7 @@
             flex-direction: column;
             transition: opacity 0.6s;
         }
-        #loading.hidden {
-            opacity: 0;
-            pointer-events: none;
-        }
+        #loading.hidden { opacity: 0; pointer-events: none; }
         .spinner {
             width: 50px; height: 50px;
             border: 5px solid #333;
@@ -40,12 +36,8 @@
             animation: spin 0.8s linear infinite;
             margin-bottom: 20px;
         }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* پنل دیباگ */
         #debug {
             position: fixed;
             left: 10px;
@@ -69,7 +61,6 @@
         #debug .ok { color: #6f6; }
         #debug .info { color: #6cf; }
 
-        /* نوار بالا */
         #topBar {
             position: fixed;
             top: 16px;
@@ -84,8 +75,6 @@
             border: 1px solid rgba(255,215,0,0.3);
             white-space: nowrap;
         }
-
-        /* نوار پایین (جهت) */
         #bottomBar {
             position: fixed;
             bottom: 30px;
@@ -101,8 +90,6 @@
             text-align: center;
             border: 1px solid rgba(255,215,0,0.3);
         }
-
-        /* مختصات */
         #coordsBox {
             position: fixed;
             bottom: 80px;
@@ -117,8 +104,6 @@
             font-family: monospace;
             direction: ltr;
         }
-
-        /* نقطه وضعیت GPS */
         #statusDot {
             display: inline-block;
             width: 10px;
@@ -130,15 +115,11 @@
         #statusDot.waiting { background: #ff9800; }
         #statusDot.active { background: #4caf50; }
         #statusDot.error { background: #f44336; }
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
-        }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
     </style>
 </head>
 
 <body>
-    <!-- صفحه بارگذاری -->
     <div id="loading">
         <div class="spinner"></div>
         <span>📷 در حال راه‌اندازی دوربین...</span>
@@ -153,20 +134,17 @@
         renderer="antialias: true; alpha: false;"
         vr-mode-ui="enabled: false"
     >
-        <!-- دوربین GPS (بدون rotation-reader برای جلوگیری از صفحه سیاه) -->
-        <a-camera id="camera" gps-camera position="0 1.6 0"></a-camera>
+        <!-- دوربین معمولی (بدون GPS) -->
+        <a-camera id="camera" position="0 1.6 0"></a-camera>
 
-        <!-- شیء هدف (مختصات موقعیت فعلی شما برای تست فوری) -->
-        <a-entity
-            id="target"
-            gps-entity-place="latitude: 35.693694; longitude: 51.559429;"
-            scale="0.4 0.4 0.4"
-        >
+        <!-- شیء هدف (با مختصات فعلی کاربر که از GPS می‌گیریم) -->
+        <a-entity id="target" visible="false">
             <a-entity look-at="#camera">
                 <a-box
                     color="#FFD700"
                     opacity="0.95"
-                    animation="property: scale; to: 0.55 0.55 0.55; dir: alternate; dur: 1500; loop: true"
+                    scale="0.5 0.5 0.5"
+                    animation="property: scale; to: 0.6 0.6 0.6; dir: alternate; dur: 1500; loop: true"
                 ></a-box>
                 <a-text
                     value="🏛️ دانشکده فنی تهران"
@@ -180,16 +158,12 @@
         </a-entity>
     </a-scene>
 
-    <!-- المان‌های UI -->
     <div id="topBar">
         <span id="statusDot" class="waiting"></span>
         <span id="distText">دریافت GPS...</span>
     </div>
-
     <div id="bottomBar">منتظر موقعیت</div>
     <div id="coordsBox">📍 <span id="coordsText">--</span></div>
-
-    <!-- پنل دیباگ -->
     <div id="debug"></div>
 
     <script>
@@ -208,20 +182,21 @@
         }
 
         // ============================================================
-        //  تنظیمات
+        //  المان‌ها
         // ============================================================
-        const TARGET_LAT = 35.693694;   // موقعیت فعلی شما (برای تست)
-        const TARGET_LNG = 51.559429;
-        let gpsReady = false;
-        let updateInterval = null;
-
-        const scene = document.getElementById('scene');
-        const camera = document.getElementById('camera');
         const loading = document.getElementById('loading');
         const statusDot = document.getElementById('statusDot');
         const distText = document.getElementById('distText');
         const bottomBar = document.getElementById('bottomBar');
         const coordsText = document.getElementById('coordsText');
+        const targetEl = document.getElementById('target');
+        const cameraEl = document.getElementById('camera');
+
+        let userLat = null;
+        let userLng = null;
+        let targetLat = null;
+        let targetLng = null;
+        let updateInterval = null;
 
         // ============================================================
         //  توابع محاسباتی
@@ -263,41 +238,19 @@
         }
 
         // ============================================================
-        //  به‌روزرسانی ناوبری
+        //  به‌روزرسانی ناوبری (با موقعیت‌های ذخیره‌شده)
         // ============================================================
         function updateNav() {
+            if (userLat === null || userLng === null || targetLat === null || targetLng === null) {
+                return;
+            }
+
             try {
-                const camComp = camera.components['gps-camera'];
-                if (!camComp) {
-                    dbg('⏳ در انتظار GPS...', 'warn');
-                    return;
-                }
-                if (!camComp.currentCoords) {
-                    statusDot.className = 'waiting';
-                    distText.textContent = 'دریافت GPS...';
-                    bottomBar.textContent = 'منتظر موقعیت';
-                    coordsText.textContent = '--';
-                    return;
-                }
-
-                const coords = camComp.currentCoords;
-                const lat = coords.latitude;
-                const lng = coords.longitude;
-
-                if (!gpsReady) {
-                    gpsReady = true;
-                    dbg(`📍 موقعیت: ${lat.toFixed(6)}, ${lng.toFixed(6)}`, 'ok');
-                    hideLoading();
-                }
-
-                statusDot.className = 'active';
-                coordsText.textContent = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-
-                const dist = computeDistance(lat, lng, TARGET_LAT, TARGET_LNG);
+                const dist = computeDistance(userLat, userLng, targetLat, targetLng);
                 distText.textContent = `${Math.round(dist)} متر تا دانشکده`;
 
-                const bearing = computeBearing(lat, lng, TARGET_LAT, TARGET_LNG);
-                const heading = camera.getAttribute('rotation')?.y || 0;
+                const bearing = computeBearing(userLat, userLng, targetLat, targetLng);
+                const heading = cameraEl.getAttribute('rotation')?.y || 0;
                 const diff = (bearing - heading + 360) % 360;
 
                 if (dist < 10) {
@@ -306,8 +259,65 @@
                     bottomBar.textContent = getDirection(diff);
                 }
             } catch (e) {
-                dbg(`❌ خطا: ${e.message}`, 'err');
+                dbg(`❌ خطا در ناوبری: ${e.message}`, 'err');
             }
+        }
+
+        // ============================================================
+        //  دریافت موقعیت از GPS مرورگر
+        // ============================================================
+        function getLocation() {
+            if (!navigator.geolocation) {
+                dbg('❌ مرورگر از GPS پشتیبانی نمی‌کند', 'err');
+                statusDot.className = 'error';
+                distText.textContent = 'GPS پشتیبانی نمی‌شود';
+                return;
+            }
+
+            dbg('📍 درخواست موقعیت از GPS...', 'info');
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    userLat = pos.coords.latitude;
+                    userLng = pos.coords.longitude;
+                    // موقعیت هدف را همان موقعیت فعلی قرار می‌دهیم تا شیء را جلوی خود ببینید
+                    targetLat = userLat;
+                    targetLng = userLng;
+
+                    dbg(`✅ موقعیت دریافت شد: ${userLat}, ${userLng}`, 'ok');
+                    dbg(`🎯 هدف در همین موقعیت قرار گرفت`, 'ok');
+
+                    statusDot.className = 'active';
+                    coordsText.textContent = `${userLat.toFixed(6)}, ${userLng.toFixed(6)}`;
+                    distText.textContent = `۰ متر (همینجا)`;
+
+                    // نمایش شیء
+                    targetEl.setAttribute('visible', 'true');
+                    // شیء را در موقعیت کاربر قرار دهید (با GPS entity)
+                    targetEl.setAttribute('gps-entity-place', `latitude: ${targetLat}; longitude: ${targetLng};`);
+
+                    hideLoading();
+                    bottomBar.textContent = '🎯 شیء در جلوی شماست';
+
+                    // راه‌اندازی به‌روزرسانی ناوبری
+                    if (updateInterval) clearInterval(updateInterval);
+                    updateInterval = setInterval(updateNav, 500);
+                    dbg('🔄 ناوبری فعال شد', 'info');
+                },
+                (err) => {
+                    dbg(`❌ خطای GPS: ${err.message}`, 'err');
+                    statusDot.className = 'error';
+                    distText.textContent = 'خطا در دریافت GPS';
+                    // در صورت خطا، یک موقعیت پیش‌فرض (تهران) قرار می‌دهیم
+                    userLat = 35.693694;
+                    userLng = 51.559429;
+                    targetLat = userLat;
+                    targetLng = userLng;
+                    targetEl.setAttribute('gps-entity-place', `latitude: ${targetLat}; longitude: ${targetLng};`);
+                    targetEl.setAttribute('visible', 'true');
+                    hideLoading();
+                },
+                { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+            );
         }
 
         // ============================================================
@@ -315,18 +325,20 @@
         // ============================================================
         function init() {
             dbg('🚀 شروع WebAR', 'info');
-            dbg(`🎯 هدف: ${TARGET_LAT}, ${TARGET_LNG}`, 'info');
 
-            // رویداد بارگذاری صحنه
+            // بارگذاری صحنه
+            const scene = document.getElementById('scene');
             scene.addEventListener('loaded', () => {
                 dbg('✅ صحنه بارگذاری شد', 'ok');
-                // اگر GPS هنوز نیامده، اما صحنه بارگذاری شد، لودینگ را مخفی کن
+                // اگر تا ۳ ثانیه بعد GPS نیامد، لودینگ را مخفی کن
                 setTimeout(() => {
-                    if (!loading.classList.contains('hidden')) hideLoading();
-                }, 2000);
+                    if (!loading.classList.contains('hidden')) {
+                        dbg('⏰ تایمر: لودینگ مخفی شد (GPS ممکن است دیر بیاید)', 'warn');
+                        hideLoading();
+                    }
+                }, 3000);
             });
 
-            // خطاهای AR.js
             scene.addEventListener('arjs-error', (ev) => {
                 dbg(`❌ AR.js error: ${JSON.stringify(ev.detail)}`, 'err');
                 hideLoading();
@@ -337,26 +349,27 @@
                 hideLoading();
             });
 
-            // تایمر اضطراری (۸ ثانیه)
+            // دریافت موقعیت
+            getLocation();
+
+            // اگر GPS خیلی طول کشید، یک موقعیت پیش‌فرض (تهران) استفاده کن
             setTimeout(() => {
-                if (!loading.classList.contains('hidden')) {
-                    dbg('⏰ تایمر اضطراری', 'warn');
+                if (userLat === null) {
+                    dbg('⏰ زمان دریافت GPS به پایان رسید، استفاده از موقعیت پیش‌فرض', 'warn');
+                    userLat = 35.693694;
+                    userLng = 51.559429;
+                    targetLat = userLat;
+                    targetLng = userLng;
+                    targetEl.setAttribute('gps-entity-place', `latitude: ${targetLat}; longitude: ${targetLng};`);
+                    targetEl.setAttribute('visible', 'true');
+                    statusDot.className = 'active';
+                    coordsText.textContent = `${userLat.toFixed(6)}, ${userLng.toFixed(6)}`;
+                    distText.textContent = `۰ متر (پیش‌فرض)`;
                     hideLoading();
+                    if (updateInterval) clearInterval(updateInterval);
+                    updateInterval = setInterval(updateNav, 500);
                 }
-            }, 8000);
-
-            // بررسی GPS مرورگر (فقط برای لاگ)
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    (pos) => dbg(`✅ GPS مرورگر: ${pos.coords.latitude}, ${pos.coords.longitude}`, 'ok'),
-                    (err) => dbg(`⚠️ خطای GPS مرورگر: ${err.message}`, 'warn'),
-                    { enableHighAccuracy: true, timeout: 15000 }
-                );
-            }
-
-            // شروع به‌روزرسانی ناوبری
-            updateInterval = setInterval(updateNav, 500);
-            dbg('🔄 ناوبری فعال شد', 'info');
+            }, 15000);
         }
 
         // ============================================================
