@@ -4,17 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="mobile-web-app-capable" content="yes">
-    <title>WebAR - دانشگاه تهران (نسخه دیباگ)</title>
+    <title>WebAR - دانشگاه تهران</title>
 
-    <!-- کتابخانه‌ها -->
+    <!-- ====== نسخه‌های پایدار و کامل AR.js ====== -->
+    <!-- A-Frame -->
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-    <script src="https://unpkg.com/aframe-ar@1.2.0/dist/aframe-ar.min.js"></script>
+    
+    <!-- AR.js با پشتیبانی از GPS (نسخه‌ی کامل) -->
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
 
     <style>
         * { margin: 0; padding: 0; }
         body { overflow: hidden; background: #000; font-family: Arial, sans-serif; }
 
-        /* صفحه لودینگ */
         #loading {
             position: fixed;
             top: 0; left: 0;
@@ -45,7 +47,6 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* پنل دیباگ (همیشه قابل مشاهده) */
         #debug-panel {
             position: absolute;
             bottom: 10px;
@@ -71,7 +72,6 @@
         #debug-panel .success { color: #6bcb77; }
         #debug-panel .info { color: #4d96ff; }
 
-        /* المان‌های معمولی */
         #info {
             position: absolute;
             top: 20px;
@@ -137,22 +137,24 @@
 </head>
 
 <body>
-    <!-- صفحه بارگذاری -->
+    <!-- Loading -->
     <div id="loading">
         <div class="spinner"></div>
         <span>📷 در حال راه‌اندازی...</span>
         <span style="font-size:0.8rem; opacity:0.6; margin-top:10px;">لطفاً صبر کنید</span>
     </div>
 
-    <!-- صحنه AR -->
+    <!-- ====== صحنه AR ====== -->
     <a-scene 
         id="scene"
         embedded 
         arjs="sourceType: webcam; debugUIEnabled: false;"
         vr-mode-ui="enabled: false"
     >
+        <!-- دوربین با GPS -->
         <a-camera id="camera" gps-camera rotation-reader position="0 1.6 0"></a-camera>
 
+        <!-- شیء هدف -->
         <a-entity 
             id="target"
             gps-entity-place="latitude: 35.724228; longitude: 51.388218;"
@@ -176,7 +178,7 @@
         </a-entity>
     </a-scene>
 
-    <!-- المان‌های UI -->
+    <!-- UI -->
     <div id="info">
         <span id="status-dot" class="waiting"></span>
         <span id="distance-text">دریافت GPS...</span>
@@ -189,7 +191,7 @@
 
     <div id="coords">📍 <span id="gps-coords">--</span></div>
 
-    <!-- پنل دیباگ -->
+    <!-- Debug Panel -->
     <div id="debug-panel">
         <div style="color:#888; margin-bottom:5px;">📋 لاگ رویدادها:</div>
         <div id="log-content"></div>
@@ -197,25 +199,21 @@
 
     <script>
         // ============================================================
-        //  پنل دیباگ - هر پیامی را با زمان و رنگ ثبت می‌کند
+        //  دیباگ
         // ============================================================
         const logContainer = document.getElementById('log-content');
-        let logCounter = 0;
-
         function addLog(message, type = 'info') {
-            logCounter++;
             const time = new Date().toLocaleTimeString();
             const entry = document.createElement('div');
             entry.textContent = `[${time}] ${message}`;
             entry.className = type;
             logContainer.appendChild(entry);
             logContainer.scrollTop = logContainer.scrollHeight;
-            // همچنین در کنسول مرورگر چاپ کن
             console.log(`[${type.toUpperCase()}] ${message}`);
         }
 
         // ============================================================
-        //  تنظیمات اولیه
+        //  تنظیمات
         // ============================================================
         const TARGET_LAT = 35.724228;
         const TARGET_LNG = 51.388218;
@@ -231,9 +229,6 @@
         const directionText = document.getElementById('direction-text');
         const gpsCoordsEl = document.getElementById('gps-coords');
 
-        // ============================================================
-        //  توابع کمکی
-        // ============================================================
         function hideLoading() {
             if (loading.classList.contains('hidden')) return;
             loading.classList.add('hidden');
@@ -274,7 +269,7 @@
             try {
                 const camComp = cameraEl.components['gps-camera'];
                 if (!camComp) {
-                    addLog('⏳ کامپوننت gps-camera هنوز آماده نشده', 'warn');
+                    addLog('⏳ gps-camera هنوز آماده نشده', 'warn');
                     return;
                 }
                 if (!camComp.currentCoords) {
@@ -287,14 +282,13 @@
                     return;
                 }
 
-                // GPS پیدا شد
                 const coords = camComp.currentCoords;
                 const userLat = coords.latitude;
                 const userLng = coords.longitude;
                 
                 if (!isGpsReady) {
                     isGpsReady = true;
-                    addLog(`📍 موقعیت دریافت شد: ${userLat.toFixed(6)}, ${userLng.toFixed(6)}`, 'success');
+                    addLog(`📍 موقعیت: ${userLat.toFixed(6)}, ${userLng.toFixed(6)}`, 'success');
                 }
                 
                 statusDot.className = 'active';
@@ -334,111 +328,85 @@
                     arrowEl.style.transform = arrowRot;
                 }
 
-                // اگر لودینگ هنوز نشان داده می‌شود، مخفی کن
                 if (!loading.classList.contains('hidden')) {
                     hideLoading();
                 }
 
             } catch (e) {
-                addLog(`❌ خطا در ناوبری: ${e.message}`, 'error');
+                addLog(`❌ خطا: ${e.message}`, 'error');
             }
         }
 
         // ============================================================
-        //  راه‌اندازی و مدیریت رویدادها
+        //  راه‌اندازی
         // ============================================================
         function init() {
-            addLog('🚀 شروع راه‌اندازی WebAR', 'info');
+            addLog('🚀 شروع WebAR', 'info');
             addLog(`🎯 هدف: ${TARGET_LAT}, ${TARGET_LNG}`, 'info');
 
-            // ------ 1. بررسی دسترسی به دوربین ------
+            // دسترسی دوربین
             if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                addLog('📷 درخواست دسترسی به دوربین...', 'info');
                 navigator.mediaDevices.getUserMedia({ video: true })
-                    .then(function(stream) {
-                        addLog('✅ دوربین در دسترس است', 'success');
-                        stream.getTracks().forEach(t => t.stop());
-                    })
-                    .catch(function(err) {
+                    .then(() => addLog('✅ دوربین در دسترس', 'success'))
+                    .catch(err => {
                         addLog(`❌ دوربین در دسترس نیست: ${err.message}`, 'error');
                         showErrorStatus('دوربین در دسترس نیست');
                         hideLoading();
                     });
-            } else {
-                addLog('⚠️ مرورگر از getUserMedia پشتیبانی نمی‌کند', 'warn');
             }
 
-            // ------ 2. بررسی GPS ------
+            // GPS
             if (navigator.geolocation) {
-                addLog('📍 درخواست موقعیت GPS...', 'info');
                 navigator.geolocation.getCurrentPosition(
-                    function(pos) {
-                        addLog(`✅ موقعیت مرورگر: ${pos.coords.latitude}, ${pos.coords.longitude}`, 'success');
-                    },
-                    function(err) {
-                        addLog(`⚠️ خطای GPS مرورگر: ${err.message}`, 'warn');
-                    },
+                    pos => addLog(`✅ GPS: ${pos.coords.latitude}, ${pos.coords.longitude}`, 'success'),
+                    err => addLog(`⚠️ خطای GPS: ${err.message}`, 'warn'),
                     { enableHighAccuracy: true, timeout: 15000 }
                 );
-            } else {
-                addLog('⚠️ مرورگر از GPS پشتیبانی نمی‌کند', 'warn');
             }
 
-            // ------ 3. رویدادهای صحنه AR.js ------
-            scene.addEventListener('loaded', function() {
-                addLog('✅ صحنه (scene) بارگذاری شد', 'success');
+            // رویدادهای صحنه
+            scene.addEventListener('loaded', () => {
+                addLog('✅ صحنه بارگذاری شد', 'success');
                 hideLoading();
             });
 
-            scene.addEventListener('arjs-error', function(ev) {
-                const detail = ev.detail || 'خطای ناشناخته';
-                addLog(`❌ خطای AR.js: ${JSON.stringify(detail)}`, 'error');
+            scene.addEventListener('arjs-error', ev => {
+                addLog(`❌ AR.js error: ${JSON.stringify(ev.detail)}`, 'error');
                 showErrorStatus('خطای AR.js');
                 hideLoading();
             });
 
-            scene.addEventListener('camera-error', function(ev) {
-                const detail = ev.detail || 'خطای ناشناخته';
-                addLog(`❌ خطای دوربین: ${JSON.stringify(detail)}`, 'error');
+            scene.addEventListener('camera-error', ev => {
+                addLog(`❌ دوربین error: ${JSON.stringify(ev.detail)}`, 'error');
                 showErrorStatus('خطای دوربین');
                 hideLoading();
             });
 
-            // ------ 4. تایمر اضطراری (آخرین راه) ------
-            setTimeout(function() {
+            // تایمر اضطراری
+            setTimeout(() => {
                 if (!loading.classList.contains('hidden')) {
-                    addLog('⏰ تایمر اضطراری: لودینگ به‌زور مخفی شد', 'warn');
+                    addLog('⏰ تایمر اضطراری اجرا شد', 'warn');
                     hideLoading();
-                    showErrorStatus('زمان راه‌اندازی تمام شد');
                 }
-            }, 8000);
+            }, 10000);
 
-            // ------ 5. شروع به‌روزرسانی ناوبری ------
+            // شروع ناوبری
             updateInterval = setInterval(updateNavigation, 500);
-            addLog('🔄 به‌روزرسانی ناوبری شروع شد', 'info');
+            addLog('🔄 ناوبری فعال شد', 'info');
         }
 
-        // ============================================================
-        //  گرفتن خطاهای کلی جاوااسکریپت
-        // ============================================================
-        window.onerror = function(message, source, lineno, colno, error) {
-            addLog(`🔥 خطای کلی: ${message} (در ${source}:${lineno})`, 'error');
+        // خطاهای کلی
+        window.onerror = function(message, source, lineno) {
+            addLog(`🔥 خطا: ${message} (${source}:${lineno})`, 'error');
             hideLoading();
-            return false;
         };
 
-        // ============================================================
-        //  اجرا
-        // ============================================================
-        document.addEventListener('DOMContentLoaded', function() {
-            addLog('📄 DOM آماده شد', 'info');
+        document.addEventListener('DOMContentLoaded', () => {
+            addLog('📄 DOM آماده', 'info');
             init();
         });
 
-        // ============================================================
-        //  پاکسازی
-        // ============================================================
-        window.addEventListener('beforeunload', function() {
+        window.addEventListener('beforeunload', () => {
             if (updateInterval) clearInterval(updateInterval);
         });
     </script>
