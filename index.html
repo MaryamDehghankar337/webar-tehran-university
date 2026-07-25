@@ -2,21 +2,16 @@
 <html lang="fa" dir="rtl">
 <head>
   <meta charset="UTF-8" />
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
-  />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>WebAR - دانشکده فنی</title>
 
-  <!-- A-Frame -->
-  <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-
-  <!-- AR.js location-based -->
-  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-gps.js"></script>
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+  <script src="https://raw.githack.com/AR-js-org/AR.js/3.4.7/three.js/build/ar-threex-location-only.js"></script>
+  <script src="https://raw.githack.com/AR-js-org/AR.js/3.4.7/aframe/build/aframe-ar.js"></script>
+  <script src="https://unpkg.com/aframe-look-at-component@0.8.0/dist/aframe-look-at-component.min.js"></script>
 
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
       width: 100%;
       height: 100%;
@@ -25,21 +20,15 @@
       font-family: Arial, sans-serif;
     }
 
-    #overlay {
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      z-index: 20;
-    }
-
     #topBar {
-      position: absolute;
-      top: 18px;
+      position: fixed;
+      top: 16px;
       left: 50%;
       transform: translateX(-50%);
+      z-index: 20;
       background: rgba(0,0,0,0.72);
       color: #fff;
-      padding: 10px 18px;
+      padding: 10px 16px;
       border-radius: 999px;
       font-size: 14px;
       border: 1px solid rgba(255,215,0,0.25);
@@ -47,117 +36,89 @@
     }
 
     #bottomBar {
-      position: absolute;
-      bottom: 22px;
+      position: fixed;
+      bottom: 20px;
       left: 50%;
       transform: translateX(-50%);
+      z-index: 20;
       background: rgba(0,0,0,0.72);
       color: #fff;
-      padding: 12px 18px;
+      padding: 12px 16px;
       border-radius: 999px;
       font-size: 15px;
-      border: 1px solid rgba(255,215,0,0.25);
-      text-align: center;
       min-width: 220px;
+      text-align: center;
+      border: 1px solid rgba(255,215,0,0.25);
     }
 
     #coords {
-      position: absolute;
-      bottom: 85px;
+      position: fixed;
+      bottom: 78px;
       left: 50%;
       transform: translateX(-50%);
+      z-index: 20;
       background: rgba(0,0,0,0.55);
-      color: rgba(255,255,255,0.8);
-      padding: 6px 12px;
-      border-radius: 12px;
+      color: rgba(255,255,255,0.85);
+      padding: 6px 10px;
+      border-radius: 10px;
       font-size: 11px;
       direction: ltr;
       font-family: monospace;
     }
 
-    #hint {
-      position: absolute;
-      top: 62px;
-      left: 50%;
-      transform: translateX(-50%);
-      color: rgba(255,255,255,0.9);
-      background: rgba(0,0,0,0.45);
-      padding: 6px 12px;
-      border-radius: 10px;
-      font-size: 12px;
-    }
-
     #log {
-      position: absolute;
-      right: 10px;
+      position: fixed;
       left: 10px;
-      bottom: 130px;
-      max-height: 28vh;
+      right: 10px;
+      bottom: 120px;
+      max-height: 30vh;
       overflow-y: auto;
+      z-index: 20;
       background: rgba(0,0,0,0.82);
       color: #8df58d;
-      border: 1px solid rgba(0,255,0,0.45);
+      border: 1px solid rgba(0,255,0,0.4);
       border-radius: 12px;
       padding: 10px;
       font-size: 11px;
       line-height: 1.6;
       direction: ltr;
       font-family: monospace;
-      display: none;
-    }
-
-    #toggleLog {
-      position: absolute;
-      right: 10px;
-      top: 18px;
-      pointer-events: auto;
-      background: rgba(0,0,0,0.72);
-      color: #fff;
-      border: 1px solid rgba(255,255,255,0.2);
-      border-radius: 10px;
-      padding: 8px 10px;
-      font-size: 12px;
     }
   </style>
 </head>
 <body>
-  <div id="overlay">
-    <div id="topBar">در حال دریافت GPS...</div>
-    <div id="hint">GPS را روشن کن و گوشی را آرام بچرخان</div>
-    <div id="coords">--</div>
-    <div id="bottomBar">منتظر موقعیت...</div>
-    <button id="toggleLog">لاگ</button>
-    <div id="log"></div>
-  </div>
+  <div id="topBar">در حال دریافت GPS...</div>
+  <div id="coords">--</div>
+  <div id="bottomBar">منتظر موقعیت...</div>
+  <div id="log"></div>
 
   <a-scene
     vr-mode-ui="enabled: false"
     embedded
-    renderer="logarithmicDepthBuffer: true;"
-    arjs="sourceType: webcam; debugUIEnabled: false;"
+    renderer="antialias: true; alpha: true"
+    arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false"
   >
-    <a-camera gps-camera rotation-reader></a-camera>
+    <a-camera gps-new-camera="gpsMinDistance: 5" rotation-reader></a-camera>
 
     <a-entity
       id="poi"
-      gps-entity-place="latitude: 35.724228; longitude: 51.388218;"
+      gps-new-entity-place="latitude: 35.724228; longitude: 51.388218;"
     >
+      <a-box
+        color="#FFD700"
+        scale="20 20 20"
+        position="0 10 0"
+        animation="property: rotation; to: 0 360 0; loop: true; dur: 4000; easing: linear"
+      ></a-box>
+
       <a-text
         value="دانشکده فنی تهران"
-        look-at="[gps-camera]"
+        look-at="[gps-new-camera]"
         align="center"
         color="#FFFFFF"
         scale="80 80 80"
         position="0 40 0"
       ></a-text>
-
-      <a-box
-        color="#FFD700"
-        opacity="0.9"
-        scale="20 20 20"
-        position="0 10 0"
-        animation="property: rotation; to: 0 360 0; loop: true; dur: 4000; easing: linear"
-      ></a-box>
     </a-entity>
   </a-scene>
 
@@ -169,53 +130,38 @@
     const bottomBar = document.getElementById("bottomBar");
     const coordsBox = document.getElementById("coords");
     const logBox = document.getElementById("log");
-    const toggleLogBtn = document.getElementById("toggleLog");
 
-    let logVisible = false;
-    toggleLogBtn.addEventListener("click", () => {
-      logVisible = !logVisible;
-      logBox.style.display = logVisible ? "block" : "none";
-    });
-
-    function addLog(msg) {
+    function log(msg) {
       const t = new Date().toLocaleTimeString();
-      const line = document.createElement("div");
-      line.textContent = `[${t}] ${msg}`;
-      logBox.appendChild(line);
+      const d = document.createElement("div");
+      d.textContent = `[${t}] ${msg}`;
+      logBox.appendChild(d);
       logBox.scrollTop = logBox.scrollHeight;
       console.log(msg);
     }
 
-    function toRad(d) {
-      return d * Math.PI / 180;
-    }
+    function toRad(d) { return d * Math.PI / 180; }
 
     function computeDistance(lat1, lon1, lat2, lon2) {
       const R = 6371e3;
-      const f1 = toRad(lat1);
-      const f2 = toRad(lat2);
+      const f1 = toRad(lat1), f2 = toRad(lat2);
       const df = toRad(lat2 - lat1);
       const dl = toRad(lon2 - lon1);
       const a =
-        Math.sin(df / 2) * Math.sin(df / 2) +
-        Math.cos(f1) * Math.cos(f2) *
-        Math.sin(dl / 2) * Math.sin(dl / 2);
+        Math.sin(df / 2) ** 2 +
+        Math.cos(f1) * Math.cos(f2) * Math.sin(dl / 2) ** 2;
       return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
 
     function computeBearing(lat1, lon1, lat2, lon2) {
-      const f1 = toRad(lat1);
-      const f2 = toRad(lat2);
+      const f1 = toRad(lat1), f2 = toRad(lat2);
       const dl = toRad(lon2 - lon1);
       const y = Math.sin(dl) * Math.cos(f2);
-      const x =
-        Math.cos(f1) * Math.sin(f2) -
-        Math.sin(f1) * Math.cos(f2) * Math.cos(dl);
-      let b = Math.atan2(y, x) * 180 / Math.PI;
-      return (b + 360) % 360;
+      const x = Math.cos(f1) * Math.sin(f2) - Math.sin(f1) * Math.cos(f2) * Math.cos(dl);
+      return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
     }
 
-    function directionText(diff) {
+    function getDirection(diff) {
       if (diff > 315 || diff <= 45) return "جلو";
       if (diff > 45 && diff <= 135) return "راست";
       if (diff > 135 && diff <= 225) return "عقب";
@@ -223,33 +169,27 @@
     }
 
     window.addEventListener("load", () => {
-      addLog("page loaded");
+      log("page loaded");
 
-      const camera = document.querySelector("[gps-camera]");
-      if (!camera) {
-        addLog("gps-camera not found");
-        topBar.textContent = "خطا: gps-camera پیدا نشد";
+      const cam = document.querySelector("[gps-new-camera]");
+      if (!cam) {
+        log("gps-new-camera not found");
+        topBar.textContent = "خطا: gps-new-camera پیدا نشد";
         return;
       }
 
-      addLog("gps-camera found");
+      log("gps-new-camera found");
 
-      setInterval(() => {
-        const comp = camera.components["gps-camera"];
-        if (!comp || !comp.currentCoords) {
-          topBar.textContent = "در حال دریافت GPS...";
-          bottomBar.textContent = "منتظر موقعیت...";
-          return;
-        }
+      cam.addEventListener("gps-camera-update-position", (e) => {
+        const lat = e.detail.position.latitude;
+        const lng = e.detail.position.longitude;
 
-        const lat = comp.currentCoords.latitude;
-        const lng = comp.currentCoords.longitude;
         coordsBox.textContent = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
 
         const dist = computeDistance(lat, lng, TARGET_LAT, TARGET_LNG);
         topBar.textContent = `${Math.round(dist)} متر تا مقصد`;
 
-        const rotation = camera.getAttribute("rotation");
+        const rotation = cam.getAttribute("rotation");
         const heading = rotation && typeof rotation.y === "number" ? rotation.y : 0;
         const bearing = computeBearing(lat, lng, TARGET_LAT, TARGET_LNG);
         const diff = (bearing - heading + 360) % 360;
@@ -257,22 +197,18 @@
         if (dist < 20) {
           bottomBar.textContent = "رسیدی به مقصد";
         } else {
-          bottomBar.textContent = `جهت تقریبی: ${directionText(diff)}`;
+          bottomBar.textContent = `جهت تقریبی: ${getDirection(diff)}`;
         }
-      }, 1000);
+
+        log(`gps update: ${lat}, ${lng}`);
+      });
 
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            addLog(`browser gps ok: ${pos.coords.latitude}, ${pos.coords.longitude}`);
-          },
-          (err) => {
-            addLog(`browser gps error: ${err.message}`);
-          },
+          (pos) => log(`browser gps ok: ${pos.coords.latitude}, ${pos.coords.longitude}`),
+          (err) => log(`browser gps error: ${err.message}`),
           { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
         );
-      } else {
-        addLog("geolocation not supported");
       }
     });
   </script>
