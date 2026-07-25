@@ -4,29 +4,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>WebAR - دانشگاه تهران</title>
+    <title>WebAR - دانشگاه تهران (نسخه دیباگ)</title>
 
-    <!-- نسخه‌های پایدار از A-Frame و AR.js -->
+    <!-- کتابخانه‌ها -->
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/aframe-ar@1.2.0/dist/aframe-ar.min.js"></script>
+    <script src="https://unpkg.com/aframe-ar@1.2.0/dist/aframe-ar.min.js"></script>
 
     <style>
         * { margin: 0; padding: 0; }
-        body { overflow: hidden; background: #000; }
+        body { overflow: hidden; background: #000; font-family: Arial, sans-serif; }
 
+        /* صفحه لودینگ */
         #loading {
             position: fixed;
             top: 0; left: 0;
             width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9);
+            background: rgba(0,0,0,0.95);
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 9999;
             color: white;
-            font-size: 1.5rem;
-            font-family: Arial, sans-serif;
             flex-direction: column;
             transition: opacity 0.5s;
         }
@@ -46,73 +44,80 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        #loading .sub {
-            font-size: 0.9rem;
-            opacity: 0.7;
-            margin-top: 10px;
-        }
 
+        /* پنل دیباگ (همیشه قابل مشاهده) */
+        #debug-panel {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            right: 10px;
+            max-height: 40vh;
+            background: rgba(0,0,0,0.85);
+            color: #0f0;
+            font-size: 0.7rem;
+            font-family: 'Courier New', monospace;
+            padding: 10px;
+            border-radius: 12px;
+            border: 1px solid #0f0;
+            overflow-y: auto;
+            z-index: 1000;
+            direction: ltr;
+            text-align: left;
+            line-height: 1.6;
+            pointer-events: none;
+        }
+        #debug-panel .error { color: #ff6b6b; }
+        #debug-panel .warn { color: #ffd93d; }
+        #debug-panel .success { color: #6bcb77; }
+        #debug-panel .info { color: #4d96ff; }
+
+        /* المان‌های معمولی */
         #info {
             position: absolute;
             top: 20px;
             left: 50%;
             transform: translateX(-50%);
-            font-size: 1rem;
+            font-size: 0.9rem;
             color: white;
-            text-shadow: 0 0 10px rgba(0,0,0,0.9);
             background: rgba(0,0,0,0.75);
-            padding: 8px 18px;
+            padding: 6px 16px;
             border-radius: 25px;
             z-index: 100;
-            font-family: Arial, sans-serif;
             direction: ltr;
             white-space: nowrap;
-            pointer-events: none;
             border: 1px solid rgba(255,215,0,0.2);
         }
-
         #navigator {
             position: absolute;
-            bottom: 40px;
+            bottom: 45vh;
             left: 50%;
             transform: translateX(-50%);
             display: flex;
             align-items: center;
-            pointer-events: none;
             background: rgba(0,0,0,0.75);
-            padding: 10px 22px;
+            padding: 8px 18px;
             border-radius: 50px;
             z-index: 100;
-            gap: 12px;
+            gap: 10px;
             border: 1px solid rgba(255,215,0,0.2);
             direction: ltr;
         }
-        #navigator .arrow {
-            font-size: 2rem;
-            transition: transform 0.3s ease;
-        }
-        #navigator .text {
-            font-size: 1.1rem;
-            color: white;
-            text-shadow: 0 0 10px rgba(0,0,0,0.9);
-        }
-
+        #navigator .arrow { font-size: 1.8rem; }
+        #navigator .text { font-size: 1rem; color: white; }
         #coords {
             position: absolute;
-            bottom: 120px;
+            bottom: calc(45vh + 80px);
             left: 50%;
             transform: translateX(-50%);
             color: rgba(255,255,255,0.5);
-            font-size: 0.65rem;
+            font-size: 0.6rem;
             font-family: monospace;
             background: rgba(0,0,0,0.5);
             padding: 4px 12px;
             border-radius: 12px;
             z-index: 100;
-            pointer-events: none;
             direction: ltr;
         }
-
         #status-dot {
             display: inline-block;
             width: 8px;
@@ -121,12 +126,9 @@
             margin-right: 8px;
             animation: blink 1s infinite;
         }
-        #status-dot.active {
-            background: #4CAF50;
-        }
-        #status-dot.waiting {
-            background: #FF9800;
-        }
+        #status-dot.active { background: #4CAF50; }
+        #status-dot.waiting { background: #FF9800; }
+        #status-dot.error { background: #ff1744; }
         @keyframes blink {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.3; }
@@ -138,31 +140,19 @@
     <!-- صفحه بارگذاری -->
     <div id="loading">
         <div class="spinner"></div>
-        <span>📷 در حال راه‌اندازی دوربین...</span>
-        <span class="sub">لطفاً صبر کنید</span>
+        <span>📷 در حال راه‌اندازی...</span>
+        <span style="font-size:0.8rem; opacity:0.6; margin-top:10px;">لطفاً صبر کنید</span>
     </div>
 
-    <!-- سن AR -->
+    <!-- صحنه AR -->
     <a-scene 
         id="scene"
         embedded 
-        arjs="
-            sourceType: webcam; 
-            debugUIEnabled: false;
-            detectionMode: mono;
-        "
+        arjs="sourceType: webcam; debugUIEnabled: false;"
         vr-mode-ui="enabled: false"
-        renderer="antialias: true; alpha: false;"
     >
-        <!-- دوربین GPS -->
-        <a-camera 
-            id="camera"
-            gps-camera
-            rotation-reader
-            position="0 1.6 0"
-        ></a-camera>
+        <a-camera id="camera" gps-camera rotation-reader position="0 1.6 0"></a-camera>
 
-        <!-- شیء هدف -->
         <a-entity 
             id="target"
             gps-entity-place="latitude: 35.724228; longitude: 51.388218;"
@@ -172,8 +162,6 @@
                 <a-box 
                     color="#FFD700" 
                     opacity="0.95"
-                    metalness="0.1"
-                    roughness="0.3"
                     animation="property: scale; to: 0.5 0.5 0.5; dir: alternate; dur: 1500; loop: true"
                 ></a-box>
                 <a-text 
@@ -199,19 +187,41 @@
         <div class="text" id="direction-text">منتظر موقعیت</div>
     </div>
 
-    <div id="coords">
-        📍 <span id="gps-coords">--</span>
+    <div id="coords">📍 <span id="gps-coords">--</span></div>
+
+    <!-- پنل دیباگ -->
+    <div id="debug-panel">
+        <div style="color:#888; margin-bottom:5px;">📋 لاگ رویدادها:</div>
+        <div id="log-content"></div>
     </div>
 
     <script>
-        // ===== تنظیمات =====
-        const TARGET_LAT = 35.724228;   // مختصات دانشکده فنی تهران
+        // ============================================================
+        //  پنل دیباگ - هر پیامی را با زمان و رنگ ثبت می‌کند
+        // ============================================================
+        const logContainer = document.getElementById('log-content');
+        let logCounter = 0;
+
+        function addLog(message, type = 'info') {
+            logCounter++;
+            const time = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.textContent = `[${time}] ${message}`;
+            entry.className = type;
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+            // همچنین در کنسول مرورگر چاپ کن
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        // ============================================================
+        //  تنظیمات اولیه
+        // ============================================================
+        const TARGET_LAT = 35.724228;
         const TARGET_LNG = 51.388218;
-        
         let isGpsReady = false;
         let updateInterval = null;
 
-        // ===== المنت‌ها =====
         const scene = document.getElementById('scene');
         const cameraEl = document.getElementById('camera');
         const loading = document.getElementById('loading');
@@ -221,16 +231,21 @@
         const directionText = document.getElementById('direction-text');
         const gpsCoordsEl = document.getElementById('gps-coords');
 
-        // ===== [اضطراری] مخفی کردن لودینگ بعد از ۵ ثانیه (حتی اگر صحنه ارور بدهد) =====
-        setTimeout(function() {
-            if (loading && !loading.classList.contains('hidden')) {
-                console.warn('⏰ تایمر اضطراری: لودینگ به‌زور مخفی شد.');
-                loading.classList.add('hidden');
-                setTimeout(() => { loading.style.display = 'none'; }, 500);
-            }
-        }, 5000);
+        // ============================================================
+        //  توابع کمکی
+        // ============================================================
+        function hideLoading() {
+            if (loading.classList.contains('hidden')) return;
+            loading.classList.add('hidden');
+            setTimeout(() => { loading.style.display = 'none'; }, 500);
+            addLog('✅ صفحه بارگذاری مخفی شد', 'success');
+        }
 
-        // ===== توابع محاسباتی =====
+        function showErrorStatus(msg) {
+            statusDot.className = 'error';
+            distanceText.textContent = '⚠️ ' + msg;
+        }
+
         function computeBearing(lat1, lon1, lat2, lon2) {
             const φ1 = lat1 * Math.PI/180;
             const φ2 = lat2 * Math.PI/180;
@@ -252,12 +267,17 @@
             return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         }
 
-        // ===== به‌روزرسانی ناوبری =====
+        // ============================================================
+        //  به‌روزرسانی ناوبری
+        // ============================================================
         function updateNavigation() {
             try {
                 const camComp = cameraEl.components['gps-camera'];
-                
-                if (!camComp || !camComp.currentCoords) {
+                if (!camComp) {
+                    addLog('⏳ کامپوننت gps-camera هنوز آماده نشده', 'warn');
+                    return;
+                }
+                if (!camComp.currentCoords) {
                     if (!isGpsReady) {
                         statusDot.className = 'waiting';
                         distanceText.textContent = 'دریافت GPS...';
@@ -267,13 +287,17 @@
                     return;
                 }
 
+                // GPS پیدا شد
                 const coords = camComp.currentCoords;
                 const userLat = coords.latitude;
                 const userLng = coords.longitude;
                 
-                isGpsReady = true;
-                statusDot.className = 'active';
+                if (!isGpsReady) {
+                    isGpsReady = true;
+                    addLog(`📍 موقعیت دریافت شد: ${userLat.toFixed(6)}, ${userLng.toFixed(6)}`, 'success');
+                }
                 
+                statusDot.className = 'active';
                 gpsCoordsEl.textContent = `${userLat.toFixed(6)}, ${userLng.toFixed(6)}`;
                 
                 const dist = computeDistance(userLat, userLng, TARGET_LAT, TARGET_LNG);
@@ -303,54 +327,117 @@
                     directionText.textContent = '🎯 رسیدید!';
                     arrowEl.style.display = 'none';
                     distanceText.textContent = '✅ رسیدید!';
+                    addLog('🎯 کاربر به هدف رسید!', 'success');
                 } else {
                     directionText.textContent = instruction;
                     arrowEl.style.display = 'block';
                     arrowEl.style.transform = arrowRot;
                 }
 
+                // اگر لودینگ هنوز نشان داده می‌شود، مخفی کن
+                if (!loading.classList.contains('hidden')) {
+                    hideLoading();
+                }
+
             } catch (e) {
-                console.warn('Navigation error:', e);
+                addLog(`❌ خطا در ناوبری: ${e.message}`, 'error');
             }
         }
 
-        // ===== راه‌اندازی =====
+        // ============================================================
+        //  راه‌اندازی و مدیریت رویدادها
+        // ============================================================
         function init() {
-            console.log('🚀 Starting WebAR...');
-            
-            scene.addEventListener('loaded', function() {
-                console.log('✅ Scene loaded!');
-                // مخفی کردن لودینگ (اگر قبلاً مخفی نشده)
-                if (!loading.classList.contains('hidden')) {
-                    loading.classList.add('hidden');
-                    setTimeout(() => { loading.style.display = 'none'; }, 500);
-                }
-            });
+            addLog('🚀 شروع راه‌اندازی WebAR', 'info');
+            addLog(`🎯 هدف: ${TARGET_LAT}, ${TARGET_LNG}`, 'info');
 
-            scene.addEventListener('arjs-error', function(ev) {
-                console.warn('AR.js Error:', ev.detail);
-                distanceText.textContent = '⚠️ خطا';
-            });
+            // ------ 1. بررسی دسترسی به دوربین ------
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                addLog('📷 درخواست دسترسی به دوربین...', 'info');
+                navigator.mediaDevices.getUserMedia({ video: true })
+                    .then(function(stream) {
+                        addLog('✅ دوربین در دسترس است', 'success');
+                        stream.getTracks().forEach(t => t.stop());
+                    })
+                    .catch(function(err) {
+                        addLog(`❌ دوربین در دسترس نیست: ${err.message}`, 'error');
+                        showErrorStatus('دوربین در دسترس نیست');
+                        hideLoading();
+                    });
+            } else {
+                addLog('⚠️ مرورگر از getUserMedia پشتیبانی نمی‌کند', 'warn');
+            }
 
-            updateInterval = setInterval(updateNavigation, 500);
-
+            // ------ 2. بررسی GPS ------
             if (navigator.geolocation) {
+                addLog('📍 درخواست موقعیت GPS...', 'info');
                 navigator.geolocation.getCurrentPosition(
                     function(pos) {
-                        console.log('✅ Browser GPS:', pos.coords.latitude, pos.coords.longitude);
+                        addLog(`✅ موقعیت مرورگر: ${pos.coords.latitude}, ${pos.coords.longitude}`, 'success');
                     },
                     function(err) {
-                        console.warn('⚠️ Browser GPS error:', err.message);
+                        addLog(`⚠️ خطای GPS مرورگر: ${err.message}`, 'warn');
                     },
                     { enableHighAccuracy: true, timeout: 15000 }
                 );
+            } else {
+                addLog('⚠️ مرورگر از GPS پشتیبانی نمی‌کند', 'warn');
             }
 
-            console.log('🎯 Target:', TARGET_LAT, TARGET_LNG);
+            // ------ 3. رویدادهای صحنه AR.js ------
+            scene.addEventListener('loaded', function() {
+                addLog('✅ صحنه (scene) بارگذاری شد', 'success');
+                hideLoading();
+            });
+
+            scene.addEventListener('arjs-error', function(ev) {
+                const detail = ev.detail || 'خطای ناشناخته';
+                addLog(`❌ خطای AR.js: ${JSON.stringify(detail)}`, 'error');
+                showErrorStatus('خطای AR.js');
+                hideLoading();
+            });
+
+            scene.addEventListener('camera-error', function(ev) {
+                const detail = ev.detail || 'خطای ناشناخته';
+                addLog(`❌ خطای دوربین: ${JSON.stringify(detail)}`, 'error');
+                showErrorStatus('خطای دوربین');
+                hideLoading();
+            });
+
+            // ------ 4. تایمر اضطراری (آخرین راه) ------
+            setTimeout(function() {
+                if (!loading.classList.contains('hidden')) {
+                    addLog('⏰ تایمر اضطراری: لودینگ به‌زور مخفی شد', 'warn');
+                    hideLoading();
+                    showErrorStatus('زمان راه‌اندازی تمام شد');
+                }
+            }, 8000);
+
+            // ------ 5. شروع به‌روزرسانی ناوبری ------
+            updateInterval = setInterval(updateNavigation, 500);
+            addLog('🔄 به‌روزرسانی ناوبری شروع شد', 'info');
         }
 
-        document.addEventListener('DOMContentLoaded', init);
-        
+        // ============================================================
+        //  گرفتن خطاهای کلی جاوااسکریپت
+        // ============================================================
+        window.onerror = function(message, source, lineno, colno, error) {
+            addLog(`🔥 خطای کلی: ${message} (در ${source}:${lineno})`, 'error');
+            hideLoading();
+            return false;
+        };
+
+        // ============================================================
+        //  اجرا
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', function() {
+            addLog('📄 DOM آماده شد', 'info');
+            init();
+        });
+
+        // ============================================================
+        //  پاکسازی
+        // ============================================================
         window.addEventListener('beforeunload', function() {
             if (updateInterval) clearInterval(updateInterval);
         });
