@@ -1,439 +1,280 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="mobile-web-app-capable" content="yes">
-    <title>WebAR - دانشگاه تهران</title>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+  />
+  <title>WebAR - دانشکده فنی</title>
 
-    <!-- ====== نسخه‌های پایدار از CDN رسمی ====== -->
-    <!-- A-Frame -->
-    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-    
-    <!-- AR.js با پشتیبانی کامل (شامل GPS) - از jsdelivr -->
-    <script src="https://cdn.jsdelivr.net/npm/ar.js@2.2.2/aframe/aframe-ar.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/ar.js@2.2.2/aframe/aframe-gps.js"></script>
+  <!-- A-Frame -->
+  <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
 
-    <style>
-        * { margin: 0; padding: 0; }
-        body { overflow: hidden; background: #000; font-family: Arial, sans-serif; }
+  <!-- AR.js location-based -->
+  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-gps.js"></script>
 
-        #loading {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-            color: white;
-            flex-direction: column;
-            transition: opacity 0.5s;
-        }
-        #loading.hidden {
-            opacity: 0;
-            pointer-events: none;
-        }
-        .spinner {
-            width: 50px; height: 50px;
-            border: 5px solid #333;
-            border-top: 5px solid #FFD700;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 20px;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+      font-family: Arial, sans-serif;
+    }
 
-        #debug-panel {
-            position: absolute;
-            bottom: 10px;
-            left: 10px;
-            right: 10px;
-            max-height: 40vh;
-            background: rgba(0,0,0,0.85);
-            color: #0f0;
-            font-size: 0.7rem;
-            font-family: 'Courier New', monospace;
-            padding: 10px;
-            border-radius: 12px;
-            border: 1px solid #0f0;
-            overflow-y: auto;
-            z-index: 1000;
-            direction: ltr;
-            text-align: left;
-            line-height: 1.6;
-            pointer-events: none;
-        }
-        #debug-panel .error { color: #ff6b6b; }
-        #debug-panel .warn { color: #ffd93d; }
-        #debug-panel .success { color: #6bcb77; }
-        #debug-panel .info { color: #4d96ff; }
+    #overlay {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 20;
+    }
 
-        #info {
-            position: absolute;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 0.9rem;
-            color: white;
-            background: rgba(0,0,0,0.75);
-            padding: 6px 16px;
-            border-radius: 25px;
-            z-index: 100;
-            direction: ltr;
-            white-space: nowrap;
-            border: 1px solid rgba(255,215,0,0.2);
-        }
-        #navigator {
-            position: absolute;
-            bottom: 45vh;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            align-items: center;
-            background: rgba(0,0,0,0.75);
-            padding: 8px 18px;
-            border-radius: 50px;
-            z-index: 100;
-            gap: 10px;
-            border: 1px solid rgba(255,215,0,0.2);
-            direction: ltr;
-        }
-        #navigator .arrow { font-size: 1.8rem; }
-        #navigator .text { font-size: 1rem; color: white; }
-        #coords {
-            position: absolute;
-            bottom: calc(45vh + 80px);
-            left: 50%;
-            transform: translateX(-50%);
-            color: rgba(255,255,255,0.5);
-            font-size: 0.6rem;
-            font-family: monospace;
-            background: rgba(0,0,0,0.5);
-            padding: 4px 12px;
-            border-radius: 12px;
-            z-index: 100;
-            direction: ltr;
-        }
-        #status-dot {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            margin-right: 8px;
-            animation: blink 1s infinite;
-        }
-        #status-dot.active { background: #4CAF50; }
-        #status-dot.waiting { background: #FF9800; }
-        #status-dot.error { background: #ff1744; }
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
-        }
-    </style>
+    #topBar {
+      position: absolute;
+      top: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.72);
+      color: #fff;
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-size: 14px;
+      border: 1px solid rgba(255,215,0,0.25);
+      white-space: nowrap;
+    }
+
+    #bottomBar {
+      position: absolute;
+      bottom: 22px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.72);
+      color: #fff;
+      padding: 12px 18px;
+      border-radius: 999px;
+      font-size: 15px;
+      border: 1px solid rgba(255,215,0,0.25);
+      text-align: center;
+      min-width: 220px;
+    }
+
+    #coords {
+      position: absolute;
+      bottom: 85px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.55);
+      color: rgba(255,255,255,0.8);
+      padding: 6px 12px;
+      border-radius: 12px;
+      font-size: 11px;
+      direction: ltr;
+      font-family: monospace;
+    }
+
+    #hint {
+      position: absolute;
+      top: 62px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: rgba(255,255,255,0.9);
+      background: rgba(0,0,0,0.45);
+      padding: 6px 12px;
+      border-radius: 10px;
+      font-size: 12px;
+    }
+
+    #log {
+      position: absolute;
+      right: 10px;
+      left: 10px;
+      bottom: 130px;
+      max-height: 28vh;
+      overflow-y: auto;
+      background: rgba(0,0,0,0.82);
+      color: #8df58d;
+      border: 1px solid rgba(0,255,0,0.45);
+      border-radius: 12px;
+      padding: 10px;
+      font-size: 11px;
+      line-height: 1.6;
+      direction: ltr;
+      font-family: monospace;
+      display: none;
+    }
+
+    #toggleLog {
+      position: absolute;
+      right: 10px;
+      top: 18px;
+      pointer-events: auto;
+      background: rgba(0,0,0,0.72);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 12px;
+    }
+  </style>
 </head>
-
 <body>
-    <!-- Loading -->
-    <div id="loading">
-        <div class="spinner"></div>
-        <span>📷 در حال راه‌اندازی...</span>
-        <span style="font-size:0.8rem; opacity:0.6; margin-top:10px;">لطفاً صبر کنید</span>
-    </div>
+  <div id="overlay">
+    <div id="topBar">در حال دریافت GPS...</div>
+    <div id="hint">GPS را روشن کن و گوشی را آرام بچرخان</div>
+    <div id="coords">--</div>
+    <div id="bottomBar">منتظر موقعیت...</div>
+    <button id="toggleLog">لاگ</button>
+    <div id="log"></div>
+  </div>
 
-    <!-- ====== صحنه AR ====== -->
-    <a-scene 
-        id="scene"
-        embedded 
-        arjs="sourceType: webcam; debugUIEnabled: false;"
-        vr-mode-ui="enabled: false"
+  <a-scene
+    vr-mode-ui="enabled: false"
+    embedded
+    renderer="logarithmicDepthBuffer: true;"
+    arjs="sourceType: webcam; debugUIEnabled: false;"
+  >
+    <a-camera gps-camera rotation-reader></a-camera>
+
+    <a-entity
+      id="poi"
+      gps-entity-place="latitude: 35.724228; longitude: 51.388218;"
     >
-        <!-- دوربین با GPS -->
-        <a-camera id="camera" gps-camera rotation-reader position="0 1.6 0"></a-camera>
+      <a-text
+        value="دانشکده فنی تهران"
+        look-at="[gps-camera]"
+        align="center"
+        color="#FFFFFF"
+        scale="80 80 80"
+        position="0 40 0"
+      ></a-text>
 
-        <!-- شیء هدف (مختصات دانشکده فنی) -->
-        <a-entity 
-            id="target"
-            gps-entity-place="latitude: 35.724228; longitude: 51.388218;"
-            scale="0.4 0.4 0.4"
-        >
-            <a-entity look-at="#camera">
-                <a-box 
-                    color="#FFD700" 
-                    opacity="0.95"
-                    animation="property: scale; to: 0.5 0.5 0.5; dir: alternate; dur: 1500; loop: true"
-                ></a-box>
-                <a-text 
-                    value="🏛️ دانشکده فنی تهران" 
-                    color="white" 
-                    position="0 -0.8 0" 
-                    scale="0.7 0.7 0.7"
-                    align="center"
-                    background="color: black; borderRadius: 0.1; padding: 0.1; opacity: 0.7"
-                ></a-text>
-            </a-entity>
-        </a-entity>
-    </a-scene>
+      <a-box
+        color="#FFD700"
+        opacity="0.9"
+        scale="20 20 20"
+        position="0 10 0"
+        animation="property: rotation; to: 0 360 0; loop: true; dur: 4000; easing: linear"
+      ></a-box>
+    </a-entity>
+  </a-scene>
 
-    <!-- UI -->
-    <div id="info">
-        <span id="status-dot" class="waiting"></span>
-        <span id="distance-text">دریافت GPS...</span>
-    </div>
+  <script>
+    const TARGET_LAT = 35.724228;
+    const TARGET_LNG = 51.388218;
 
-    <div id="navigator">
-        <div class="arrow" id="arrow">⬆️</div>
-        <div class="text" id="direction-text">منتظر موقعیت</div>
-    </div>
+    const topBar = document.getElementById("topBar");
+    const bottomBar = document.getElementById("bottomBar");
+    const coordsBox = document.getElementById("coords");
+    const logBox = document.getElementById("log");
+    const toggleLogBtn = document.getElementById("toggleLog");
 
-    <div id="coords">📍 <span id="gps-coords">--</span></div>
+    let logVisible = false;
+    toggleLogBtn.addEventListener("click", () => {
+      logVisible = !logVisible;
+      logBox.style.display = logVisible ? "block" : "none";
+    });
 
-    <!-- Debug Panel -->
-    <div id="debug-panel">
-        <div style="color:#888; margin-bottom:5px;">📋 لاگ رویدادها:</div>
-        <div id="log-content"></div>
-    </div>
+    function addLog(msg) {
+      const t = new Date().toLocaleTimeString();
+      const line = document.createElement("div");
+      line.textContent = `[${t}] ${msg}`;
+      logBox.appendChild(line);
+      logBox.scrollTop = logBox.scrollHeight;
+      console.log(msg);
+    }
 
-    <script>
-        // ============================================================
-        //  دیباگ
-        // ============================================================
-        const logContainer = document.getElementById('log-content');
-        function addLog(message, type = 'info') {
-            const time = new Date().toLocaleTimeString();
-            const entry = document.createElement('div');
-            entry.textContent = `[${time}] ${message}`;
-            entry.className = type;
-            logContainer.appendChild(entry);
-            logContainer.scrollTop = logContainer.scrollHeight;
-            console.log(`[${type.toUpperCase()}] ${message}`);
+    function toRad(d) {
+      return d * Math.PI / 180;
+    }
+
+    function computeDistance(lat1, lon1, lat2, lon2) {
+      const R = 6371e3;
+      const f1 = toRad(lat1);
+      const f2 = toRad(lat2);
+      const df = toRad(lat2 - lat1);
+      const dl = toRad(lon2 - lon1);
+      const a =
+        Math.sin(df / 2) * Math.sin(df / 2) +
+        Math.cos(f1) * Math.cos(f2) *
+        Math.sin(dl / 2) * Math.sin(dl / 2);
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    function computeBearing(lat1, lon1, lat2, lon2) {
+      const f1 = toRad(lat1);
+      const f2 = toRad(lat2);
+      const dl = toRad(lon2 - lon1);
+      const y = Math.sin(dl) * Math.cos(f2);
+      const x =
+        Math.cos(f1) * Math.sin(f2) -
+        Math.sin(f1) * Math.cos(f2) * Math.cos(dl);
+      let b = Math.atan2(y, x) * 180 / Math.PI;
+      return (b + 360) % 360;
+    }
+
+    function directionText(diff) {
+      if (diff > 315 || diff <= 45) return "جلو";
+      if (diff > 45 && diff <= 135) return "راست";
+      if (diff > 135 && diff <= 225) return "عقب";
+      return "چپ";
+    }
+
+    window.addEventListener("load", () => {
+      addLog("page loaded");
+
+      const camera = document.querySelector("[gps-camera]");
+      if (!camera) {
+        addLog("gps-camera not found");
+        topBar.textContent = "خطا: gps-camera پیدا نشد";
+        return;
+      }
+
+      addLog("gps-camera found");
+
+      setInterval(() => {
+        const comp = camera.components["gps-camera"];
+        if (!comp || !comp.currentCoords) {
+          topBar.textContent = "در حال دریافت GPS...";
+          bottomBar.textContent = "منتظر موقعیت...";
+          return;
         }
 
-        // ============================================================
-        //  تنظیمات
-        // ============================================================
-        const TARGET_LAT = 35.724228;
-        const TARGET_LNG = 51.388218;
-        let isGpsReady = false;
-        let updateInterval = null;
-        let gpsChecked = false;
+        const lat = comp.currentCoords.latitude;
+        const lng = comp.currentCoords.longitude;
+        coordsBox.textContent = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
 
-        const scene = document.getElementById('scene');
-        const cameraEl = document.getElementById('camera');
-        const loading = document.getElementById('loading');
-        const statusDot = document.getElementById('status-dot');
-        const distanceText = document.getElementById('distance-text');
-        const arrowEl = document.getElementById('arrow');
-        const directionText = document.getElementById('direction-text');
-        const gpsCoordsEl = document.getElementById('gps-coords');
+        const dist = computeDistance(lat, lng, TARGET_LAT, TARGET_LNG);
+        topBar.textContent = `${Math.round(dist)} متر تا مقصد`;
 
-        function hideLoading() {
-            if (loading.classList.contains('hidden')) return;
-            loading.classList.add('hidden');
-            setTimeout(() => { loading.style.display = 'none'; }, 500);
-            addLog('✅ صفحه بارگذاری مخفی شد', 'success');
+        const rotation = camera.getAttribute("rotation");
+        const heading = rotation && typeof rotation.y === "number" ? rotation.y : 0;
+        const bearing = computeBearing(lat, lng, TARGET_LAT, TARGET_LNG);
+        const diff = (bearing - heading + 360) % 360;
+
+        if (dist < 20) {
+          bottomBar.textContent = "رسیدی به مقصد";
+        } else {
+          bottomBar.textContent = `جهت تقریبی: ${directionText(diff)}`;
         }
+      }, 1000);
 
-        function showErrorStatus(msg) {
-            statusDot.className = 'error';
-            distanceText.textContent = '⚠️ ' + msg;
-        }
-
-        function computeBearing(lat1, lon1, lat2, lon2) {
-            const φ1 = lat1 * Math.PI/180;
-            const φ2 = lat2 * Math.PI/180;
-            const Δλ = (lon2 - lon1) * Math.PI/180;
-            const y = Math.sin(Δλ) * Math.cos(φ2);
-            const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
-            let θ = Math.atan2(y, x) * 180/Math.PI;
-            return (θ + 360) % 360;
-        }
-
-        function computeDistance(lat1, lon1, lat2, lon2) {
-            const toRad = d => d * Math.PI/180;
-            const R = 6371e3;
-            const φ1 = toRad(lat1);
-            const φ2 = toRad(lat2);
-            const Δφ = toRad(lat2 - lat1);
-            const Δλ = toRad(lon2 - lon1);
-            const a = Math.sin(Δφ/2)**2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2)**2;
-            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        }
-
-        // ============================================================
-        //  بررسی وجود کامپوننت‌ها (هر ۲ ثانیه یکبار تا ثبت شوند)
-        // ============================================================
-        function checkComponents() {
-            if (gpsChecked) return;
-            
-            const camComp = cameraEl.components['gps-camera'];
-            const targetComp = document.getElementById('target')?.components['gps-entity-place'];
-            
-            if (camComp && targetComp) {
-                gpsChecked = true;
-                addLog('✅ کامپوننت‌های GPS با موفقیت ثبت شدند!', 'success');
-                // یکبار ناوبری را به‌روز کن
-                updateNavigation();
-            } else {
-                addLog('⏳ در انتظار ثبت کامپوننت‌های GPS...', 'warn');
-            }
-        }
-
-        // ============================================================
-        //  به‌روزرسانی ناوبری
-        // ============================================================
-        function updateNavigation() {
-            try {
-                const camComp = cameraEl.components['gps-camera'];
-                if (!camComp) {
-                    return;
-                }
-                if (!camComp.currentCoords) {
-                    if (!isGpsReady) {
-                        statusDot.className = 'waiting';
-                        distanceText.textContent = 'دریافت GPS...';
-                        directionText.textContent = 'منتظر موقعیت';
-                        gpsCoordsEl.textContent = '--';
-                    }
-                    return;
-                }
-
-                const coords = camComp.currentCoords;
-                const userLat = coords.latitude;
-                const userLng = coords.longitude;
-                
-                if (!isGpsReady) {
-                    isGpsReady = true;
-                    addLog(`📍 موقعیت دریافت شد: ${userLat.toFixed(6)}, ${userLng.toFixed(6)}`, 'success');
-                }
-                
-                statusDot.className = 'active';
-                gpsCoordsEl.textContent = `${userLat.toFixed(6)}, ${userLng.toFixed(6)}`;
-                
-                const dist = computeDistance(userLat, userLng, TARGET_LAT, TARGET_LNG);
-                distanceText.textContent = `${Math.round(dist)} متر تا دانشکده`;
-                
-                const bearingToTarget = computeBearing(userLat, userLng, TARGET_LAT, TARGET_LNG);
-                const heading = cameraEl.getAttribute('rotation')?.y || 0;
-                
-                let diff = (bearingToTarget - heading + 360) % 360;
-                let instruction, arrowRot;
-
-                if (diff > 315 || diff <= 45) {
-                    instruction = '⬆️ جلو';
-                    arrowRot = 'rotate(0deg)';
-                } else if (diff > 45 && diff <= 135) {
-                    instruction = '➡️ راست';
-                    arrowRot = 'rotate(90deg)';
-                } else if (diff > 135 && diff <= 225) {
-                    instruction = '⬇️ عقب';
-                    arrowRot = 'rotate(180deg)';
-                } else {
-                    instruction = '⬅️ چپ';
-                    arrowRot = 'rotate(270deg)';
-                }
-
-                if (dist < 10) {
-                    directionText.textContent = '🎯 رسیدید!';
-                    arrowEl.style.display = 'none';
-                    distanceText.textContent = '✅ رسیدید!';
-                    addLog('🎯 کاربر به هدف رسید!', 'success');
-                } else {
-                    directionText.textContent = instruction;
-                    arrowEl.style.display = 'block';
-                    arrowEl.style.transform = arrowRot;
-                }
-
-                if (!loading.classList.contains('hidden')) {
-                    hideLoading();
-                }
-
-            } catch (e) {
-                addLog(`❌ خطا: ${e.message}`, 'error');
-            }
-        }
-
-        // ============================================================
-        //  راه‌اندازی
-        // ============================================================
-        function init() {
-            addLog('🚀 شروع WebAR', 'info');
-            addLog(`🎯 هدف: ${TARGET_LAT}, ${TARGET_LNG}`, 'info');
-
-            // دسترسی دوربین
-            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                navigator.mediaDevices.getUserMedia({ video: true })
-                    .then(() => addLog('✅ دوربین در دسترس', 'success'))
-                    .catch(err => {
-                        addLog(`❌ دوربین در دسترس نیست: ${err.message}`, 'error');
-                        showErrorStatus('دوربین در دسترس نیست');
-                        hideLoading();
-                    });
-            }
-
-            // GPS مرورگر (فقط برای لاگ)
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    pos => addLog(`✅ GPS مرورگر: ${pos.coords.latitude}, ${pos.coords.longitude}`, 'success'),
-                    err => addLog(`⚠️ خطای GPS مرورگر: ${err.message}`, 'warn'),
-                    { enableHighAccuracy: true, timeout: 15000 }
-                );
-            }
-
-            // رویدادهای صحنه
-            scene.addEventListener('loaded', () => {
-                addLog('✅ صحنه بارگذاری شد', 'success');
-                hideLoading();
-                // شروع بررسی کامپوننت‌ها
-                setTimeout(checkComponents, 1000);
-            });
-
-            scene.addEventListener('arjs-error', ev => {
-                addLog(`❌ AR.js error: ${JSON.stringify(ev.detail)}`, 'error');
-                showErrorStatus('خطای AR.js');
-                hideLoading();
-            });
-
-            scene.addEventListener('camera-error', ev => {
-                addLog(`❌ دوربین error: ${JSON.stringify(ev.detail)}`, 'error');
-                showErrorStatus('خطای دوربین');
-                hideLoading();
-            });
-
-            // بررسی دوره‌ای کامپوننت‌ها (هر ۲ ثانیه)
-            setInterval(checkComponents, 2000);
-
-            // تایمر اضطراری (۱۰ ثانیه)
-            setTimeout(() => {
-                if (!loading.classList.contains('hidden')) {
-                    addLog('⏰ تایمر اضطراری اجرا شد', 'warn');
-                    hideLoading();
-                }
-            }, 10000);
-
-            // شروع ناوبری (هر ۵۰۰ میلی‌ثانیه)
-            updateInterval = setInterval(updateNavigation, 500);
-            addLog('🔄 ناوبری فعال شد', 'info');
-        }
-
-        // خطاهای کلی
-        window.onerror = function(message, source, lineno) {
-            addLog(`🔥 خطا: ${message} (${source}:${lineno})`, 'error');
-            hideLoading();
-        };
-
-        document.addEventListener('DOMContentLoaded', () => {
-            addLog('📄 DOM آماده', 'info');
-            init();
-        });
-
-        window.addEventListener('beforeunload', () => {
-            if (updateInterval) clearInterval(updateInterval);
-        });
-    </script>
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            addLog(`browser gps ok: ${pos.coords.latitude}, ${pos.coords.longitude}`);
+          },
+          (err) => {
+            addLog(`browser gps error: ${err.message}`);
+          },
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+        );
+      } else {
+        addLog("geolocation not supported");
+      }
+    });
+  </script>
 </body>
 </html>
