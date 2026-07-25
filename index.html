@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>WebAR - دانشکده فنی تهران</title>
 
-    <!-- A-Frame و AR.js -->
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/ar.js@2.2.2/aframe/aframe-ar.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/ar.js@2.2.2/aframe/aframe-gps.min.js"></script>
@@ -126,7 +125,6 @@
         <span style="font-size:0.9rem; opacity:0.6; margin-top:8px;">لطفاً صبر کنید</span>
     </div>
 
-    <!-- صحنه AR -->
     <a-scene
         id="scene"
         embedded
@@ -134,10 +132,10 @@
         renderer="antialias: true; alpha: false;"
         vr-mode-ui="enabled: false"
     >
-        <!-- دوربین معمولی (بدون GPS) -->
-        <a-camera id="camera" position="0 1.6 0"></a-camera>
+        <!-- دوربین با gps-camera (برای نمایش تصویر دوربین ضروری است) -->
+        <a-camera id="camera" gps-camera position="0 1.6 0"></a-camera>
 
-        <!-- شیء هدف (با مختصات فعلی کاربر که از GPS می‌گیریم) -->
+        <!-- شیء هدف (در موقعیت کاربر قرار می‌گیرد) -->
         <a-entity id="target" visible="false">
             <a-entity look-at="#camera">
                 <a-box
@@ -191,12 +189,14 @@
         const coordsText = document.getElementById('coordsText');
         const targetEl = document.getElementById('target');
         const cameraEl = document.getElementById('camera');
+        const scene = document.getElementById('scene');
 
         let userLat = null;
         let userLng = null;
         let targetLat = null;
         let targetLng = null;
         let updateInterval = null;
+        let gpsChecked = false;
 
         // ============================================================
         //  توابع محاسباتی
@@ -238,12 +238,44 @@
         }
 
         // ============================================================
-        //  به‌روزرسانی ناوبری (با موقعیت‌های ذخیره‌شده)
+        //  بررسی ثبت کامپوننت GPS
+        // ============================================================
+        function checkGpsComponent() {
+            if (gpsChecked) return;
+            const camComp = cameraEl.components['gps-camera'];
+            if (camComp) {
+                gpsChecked = true;
+                dbg('✅ gps-camera ثبت شد', 'ok');
+                if (userLat !== null && userLng !== null) {
+                    setTargetPosition(userLat, userLng);
+                }
+            } else {
+                dbg('⏳ در انتظار ثبت gps-camera...', 'warn');
+            }
+        }
+
+        // ============================================================
+        //  تنظیم موقعیت هدف
+        // ============================================================
+        function setTargetPosition(lat, lng) {
+            targetLat = lat;
+            targetLng = lng;
+            targetEl.setAttribute('gps-entity-place', `latitude: ${lat}; longitude: ${lng};`);
+            targetEl.setAttribute('visible', 'true');
+            dbg(`🎯 هدف در موقعیت ${lat}, ${lng} قرار گرفت`, 'ok');
+            bottomBar.textContent = '🎯 شیء در جلوی شماست';
+            if (!loading.classList.contains('hidden')) hideLoading();
+
+            if (updateInterval) clearInterval(updateInterval);
+            updateInterval = setInterval(updateNav, 500);
+            dbg('🔄 ناوبری فعال شد', 'info');
+        }
+
+        // ============================================================
+        //  به‌روزرسانی ناوبری
         // ============================================================
         function updateNav() {
-            if (userLat === null || userLng === null || targetLat === null || targetLng === null) {
-                return;
-            }
+            if (userLat === null || userLng === null || targetLat === null || targetLng === null) return;
 
             try {
                 const dist = computeDistance(userLat, userLng, targetLat, targetLng);
@@ -253,13 +285,9 @@
                 const heading = cameraEl.getAttribute('rotation')?.y || 0;
                 const diff = (bearing - heading + 360) % 360;
 
-                if (dist < 10) {
-                    bottomBar.textContent = '🎯 رسیدید!';
-                } else {
-                    bottomBar.textContent = getDirection(diff);
-                }
+                bottomBar.textContent = (dist < 10) ? '🎯 رسیدید!' : getDirection(diff);
             } catch (e) {
-                dbg(`❌ خطا در ناوبری: ${e.message}`, 'err');
+                dbg(`❌ خطا: ${e.message}`, 'err');
             }
         }
 
@@ -268,52 +296,34 @@
         // ============================================================
         function getLocation() {
             if (!navigator.geolocation) {
-                dbg('❌ مرورگر از GPS پشتیبانی نمی‌کند', 'err');
+                dbg('❌ GPS پشتیبانی نمی‌شود', 'err');
                 statusDot.className = 'error';
                 distText.textContent = 'GPS پشتیبانی نمی‌شود';
                 return;
             }
 
-            dbg('📍 درخواست موقعیت از GPS...', 'info');
+            dbg('📍 درخواست موقعیت...', 'info');
             navigator.geolocation.getCurrentPosition(
                 (pos) => {
                     userLat = pos.coords.latitude;
                     userLng = pos.coords.longitude;
-                    // موقعیت هدف را همان موقعیت فعلی قرار می‌دهیم تا شیء را جلوی خود ببینید
-                    targetLat = userLat;
-                    targetLng = userLng;
-
-                    dbg(`✅ موقعیت دریافت شد: ${userLat}, ${userLng}`, 'ok');
-                    dbg(`🎯 هدف در همین موقعیت قرار گرفت`, 'ok');
-
+                    dbg(`✅ موقعیت: ${userLat}, ${userLng}`, 'ok');
                     statusDot.className = 'active';
                     coordsText.textContent = `${userLat.toFixed(6)}, ${userLng.toFixed(6)}`;
-                    distText.textContent = `۰ متر (همینجا)`;
 
-                    // نمایش شیء
-                    targetEl.setAttribute('visible', 'true');
-                    // شیء را در موقعیت کاربر قرار دهید (با GPS entity)
-                    targetEl.setAttribute('gps-entity-place', `latitude: ${targetLat}; longitude: ${targetLng};`);
+                    const camComp = cameraEl.components['gps-camera'];
+                    if (camComp) setTargetPosition(userLat, userLng);
+                    else dbg('⏳ منتظر ثبت gps-camera...', 'warn');
 
                     hideLoading();
-                    bottomBar.textContent = '🎯 شیء در جلوی شماست';
-
-                    // راه‌اندازی به‌روزرسانی ناوبری
-                    if (updateInterval) clearInterval(updateInterval);
-                    updateInterval = setInterval(updateNav, 500);
-                    dbg('🔄 ناوبری فعال شد', 'info');
                 },
                 (err) => {
                     dbg(`❌ خطای GPS: ${err.message}`, 'err');
                     statusDot.className = 'error';
-                    distText.textContent = 'خطا در دریافت GPS';
-                    // در صورت خطا، یک موقعیت پیش‌فرض (تهران) قرار می‌دهیم
-                    userLat = 35.693694;
-                    userLng = 51.559429;
-                    targetLat = userLat;
-                    targetLng = userLng;
-                    targetEl.setAttribute('gps-entity-place', `latitude: ${targetLat}; longitude: ${targetLng};`);
-                    targetEl.setAttribute('visible', 'true');
+                    userLat = 35.7244;
+                    userLng = 51.3878;
+                    const camComp = cameraEl.components['gps-camera'];
+                    if (camComp) setTargetPosition(userLat, userLng);
                     hideLoading();
                 },
                 { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
@@ -326,14 +336,16 @@
         function init() {
             dbg('🚀 شروع WebAR', 'info');
 
-            // بارگذاری صحنه
-            const scene = document.getElementById('scene');
             scene.addEventListener('loaded', () => {
                 dbg('✅ صحنه بارگذاری شد', 'ok');
-                // اگر تا ۳ ثانیه بعد GPS نیامد، لودینگ را مخفی کن
+                const checkInterval = setInterval(() => {
+                    checkGpsComponent();
+                    if (gpsChecked) clearInterval(checkInterval);
+                }, 1000);
+
                 setTimeout(() => {
                     if (!loading.classList.contains('hidden')) {
-                        dbg('⏰ تایمر: لودینگ مخفی شد (GPS ممکن است دیر بیاید)', 'warn');
+                        dbg('⏰ تایمر اضطراری', 'warn');
                         hideLoading();
                     }
                 }, 3000);
@@ -349,32 +361,22 @@
                 hideLoading();
             });
 
-            // دریافت موقعیت
             getLocation();
 
-            // اگر GPS خیلی طول کشید، یک موقعیت پیش‌فرض (تهران) استفاده کن
             setTimeout(() => {
                 if (userLat === null) {
-                    dbg('⏰ زمان دریافت GPS به پایان رسید، استفاده از موقعیت پیش‌فرض', 'warn');
-                    userLat = 35.693694;
-                    userLng = 51.559429;
-                    targetLat = userLat;
-                    targetLng = userLng;
-                    targetEl.setAttribute('gps-entity-place', `latitude: ${targetLat}; longitude: ${targetLng};`);
-                    targetEl.setAttribute('visible', 'true');
+                    dbg('⏰ زمان GPS تمام شد، استفاده از پیش‌فرض', 'warn');
+                    userLat = 35.7244;
+                    userLng = 51.3878;
+                    const camComp = cameraEl.components['gps-camera'];
+                    if (camComp) setTargetPosition(userLat, userLng);
                     statusDot.className = 'active';
                     coordsText.textContent = `${userLat.toFixed(6)}, ${userLng.toFixed(6)}`;
-                    distText.textContent = `۰ متر (پیش‌فرض)`;
                     hideLoading();
-                    if (updateInterval) clearInterval(updateInterval);
-                    updateInterval = setInterval(updateNav, 500);
                 }
             }, 15000);
         }
 
-        // ============================================================
-        //  خطاهای کلی
-        // ============================================================
         window.onerror = function(msg, src, line) {
             dbg(`🔥 خطا: ${msg} (${src}:${line})`, 'err');
             hideLoading();
