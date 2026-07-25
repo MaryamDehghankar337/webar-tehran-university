@@ -6,12 +6,15 @@
     <meta name="mobile-web-app-capable" content="yes">
     <title>WebAR - دانشگاه تهران</title>
 
-    <!-- ====== نسخه‌های پایدار و کامل AR.js ====== -->
+    <!-- ====== اسکریپت‌های کامل (شامل GPS) ====== -->
     <!-- A-Frame -->
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     
-    <!-- AR.js با پشتیبانی از GPS (نسخه‌ی کامل) -->
+    <!-- AR.js اصلی -->
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    
+    <!-- کامپوننت GPS (جداگانه) - این همان چیزی بود که کم داشتید! -->
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-gps.js"></script>
 
     <style>
         * { margin: 0; padding: 0; }
@@ -151,7 +154,7 @@
         arjs="sourceType: webcam; debugUIEnabled: false;"
         vr-mode-ui="enabled: false"
     >
-        <!-- دوربین با GPS -->
+        <!-- دوربین با GPS (اکنون کامپوننت ثبت شده است) -->
         <a-camera id="camera" gps-camera rotation-reader position="0 1.6 0"></a-camera>
 
         <!-- شیء هدف -->
@@ -269,7 +272,7 @@
             try {
                 const camComp = cameraEl.components['gps-camera'];
                 if (!camComp) {
-                    addLog('⏳ gps-camera هنوز آماده نشده', 'warn');
+                    addLog('⏳ gps-camera هنوز ثبت نشده (در حال انتظار...)', 'warn');
                     return;
                 }
                 if (!camComp.currentCoords) {
@@ -288,7 +291,7 @@
                 
                 if (!isGpsReady) {
                     isGpsReady = true;
-                    addLog(`📍 موقعیت: ${userLat.toFixed(6)}, ${userLng.toFixed(6)}`, 'success');
+                    addLog(`📍 موقعیت دریافت شد: ${userLat.toFixed(6)}, ${userLng.toFixed(6)}`, 'success');
                 }
                 
                 statusDot.className = 'active';
@@ -358,8 +361,8 @@
             // GPS
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
-                    pos => addLog(`✅ GPS: ${pos.coords.latitude}, ${pos.coords.longitude}`, 'success'),
-                    err => addLog(`⚠️ خطای GPS: ${err.message}`, 'warn'),
+                    pos => addLog(`✅ GPS مرورگر: ${pos.coords.latitude}, ${pos.coords.longitude}`, 'success'),
+                    err => addLog(`⚠️ خطای GPS مرورگر: ${err.message}`, 'warn'),
                     { enableHighAccuracy: true, timeout: 15000 }
                 );
             }
@@ -367,6 +370,15 @@
             // رویدادهای صحنه
             scene.addEventListener('loaded', () => {
                 addLog('✅ صحنه بارگذاری شد', 'success');
+                // بررسی وجود کامپوننت gps-camera بعد از بارگذاری صحنه
+                setTimeout(() => {
+                    const camComp = cameraEl.components['gps-camera'];
+                    if (camComp) {
+                        addLog('✅ کامپوننت gps-camera ثبت شد', 'success');
+                    } else {
+                        addLog('❌ کامپوننت gps-camera ثبت نشد!', 'error');
+                    }
+                }, 1000);
                 hideLoading();
             });
 
