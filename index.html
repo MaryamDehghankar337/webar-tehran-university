@@ -162,15 +162,13 @@
             position="0 1.6 0"
         ></a-camera>
 
-        <!-- شیء هدف با گروهی که همیشه به دوربین نگاه می‌کند -->
+        <!-- شیء هدف -->
         <a-entity 
             id="target"
             gps-entity-place="latitude: 35.724228; longitude: 51.388218;"
             scale="0.4 0.4 0.4"
         >
-            <!-- زیرگروهی که رو به دوربین می‌ماند -->
             <a-entity look-at="#camera">
-                <!-- مکعب طلایی با انیمیشن -->
                 <a-box 
                     color="#FFD700" 
                     opacity="0.95"
@@ -178,8 +176,6 @@
                     roughness="0.3"
                     animation="property: scale; to: 0.5 0.5 0.5; dir: alternate; dur: 1500; loop: true"
                 ></a-box>
-                
-                <!-- متن نام دانشکده با پس‌زمینه -->
                 <a-text 
                     value="🏛️ دانشکده فنی تهران" 
                     color="white" 
@@ -225,6 +221,15 @@
         const directionText = document.getElementById('direction-text');
         const gpsCoordsEl = document.getElementById('gps-coords');
 
+        // ===== [اضطراری] مخفی کردن لودینگ بعد از ۵ ثانیه (حتی اگر صحنه ارور بدهد) =====
+        setTimeout(function() {
+            if (loading && !loading.classList.contains('hidden')) {
+                console.warn('⏰ تایمر اضطراری: لودینگ به‌زور مخفی شد.');
+                loading.classList.add('hidden');
+                setTimeout(() => { loading.style.display = 'none'; }, 500);
+            }
+        }, 5000);
+
         // ===== توابع محاسباتی =====
         function computeBearing(lat1, lon1, lat2, lon2) {
             const φ1 = lat1 * Math.PI/180;
@@ -262,7 +267,6 @@
                     return;
                 }
 
-                // GPS فعال شد
                 const coords = camComp.currentCoords;
                 const userLat = coords.latitude;
                 const userLng = coords.longitude;
@@ -270,16 +274,12 @@
                 isGpsReady = true;
                 statusDot.className = 'active';
                 
-                // نمایش مختصات فعلی
                 gpsCoordsEl.textContent = `${userLat.toFixed(6)}, ${userLng.toFixed(6)}`;
                 
-                // فاصله تا هدف
                 const dist = computeDistance(userLat, userLng, TARGET_LAT, TARGET_LNG);
                 distanceText.textContent = `${Math.round(dist)} متر تا دانشکده`;
                 
-                // جهت‌یابی
                 const bearingToTarget = computeBearing(userLat, userLng, TARGET_LAT, TARGET_LNG);
-                // دریافت heading از دوربین (چرخش حول محور Y)
                 const heading = cameraEl.getAttribute('rotation')?.y || 0;
                 
                 let diff = (bearingToTarget - heading + 360) % 360;
@@ -309,12 +309,6 @@
                     arrowEl.style.transform = arrowRot;
                 }
 
-                // مخفی کردن صفحه بارگذاری
-                if (!loading.classList.contains('hidden')) {
-                    loading.classList.add('hidden');
-                    setTimeout(() => { loading.style.display = 'none'; }, 500);
-                }
-
             } catch (e) {
                 console.warn('Navigation error:', e);
             }
@@ -324,28 +318,22 @@
         function init() {
             console.log('🚀 Starting WebAR...');
             
-            // وقتی صحنه آماده شد
             scene.addEventListener('loaded', function() {
                 console.log('✅ Scene loaded!');
-                // اگر GPS تا ۳ ثانیه نیامد، loading را مخفی کن
-                setTimeout(() => {
-                    if (!loading.classList.contains('hidden')) {
-                        loading.classList.add('hidden');
-                        setTimeout(() => { loading.style.display = 'none'; }, 500);
-                    }
-                }, 4000);
+                // مخفی کردن لودینگ (اگر قبلاً مخفی نشده)
+                if (!loading.classList.contains('hidden')) {
+                    loading.classList.add('hidden');
+                    setTimeout(() => { loading.style.display = 'none'; }, 500);
+                }
             });
 
-            // خطاهای AR.js
             scene.addEventListener('arjs-error', function(ev) {
                 console.warn('AR.js Error:', ev.detail);
                 distanceText.textContent = '⚠️ خطا';
             });
 
-            // شروع به‌روزرسانی هر ۵۰۰ میلی‌ثانیه
             updateInterval = setInterval(updateNavigation, 500);
 
-            // درخواست مجوز GPS از مرورگر (برای اطمینان)
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
                     function(pos) {
@@ -361,10 +349,8 @@
             console.log('🎯 Target:', TARGET_LAT, TARGET_LNG);
         }
 
-        // ===== اجرا =====
         document.addEventListener('DOMContentLoaded', init);
         
-        // ===== پاکسازی =====
         window.addEventListener('beforeunload', function() {
             if (updateInterval) clearInterval(updateInterval);
         });
