@@ -6,7 +6,11 @@
     <meta name="mobile-web-app-capable" content="yes">
     <title>WebAR - دانشگاه تهران</title>
 
+    <!-- ====== نسخه‌های پایدار از CDN رسمی ====== -->
+    <!-- A-Frame -->
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+    
+    <!-- AR.js با پشتیبانی کامل (شامل GPS) - از jsdelivr -->
     <script src="https://cdn.jsdelivr.net/npm/ar.js@2.2.2/aframe/aframe-ar.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/ar.js@2.2.2/aframe/aframe-gps.js"></script>
 
@@ -134,24 +138,27 @@
 </head>
 
 <body>
+    <!-- Loading -->
     <div id="loading">
         <div class="spinner"></div>
         <span>📷 در حال راه‌اندازی...</span>
         <span style="font-size:0.8rem; opacity:0.6; margin-top:10px;">لطفاً صبر کنید</span>
     </div>
 
+    <!-- ====== صحنه AR ====== -->
     <a-scene 
         id="scene"
         embedded 
         arjs="sourceType: webcam; debugUIEnabled: false;"
         vr-mode-ui="enabled: false"
     >
+        <!-- دوربین با GPS -->
         <a-camera id="camera" gps-camera rotation-reader position="0 1.6 0"></a-camera>
 
-        <!-- ====== مختصات به موقعیت فعلی شما تغییر کرده ====== -->
+        <!-- شیء هدف (مختصات دانشکده فنی) -->
         <a-entity 
             id="target"
-            gps-entity-place="latitude: 35.693694; longitude: 51.559429;"
+            gps-entity-place="latitude: 35.724228; longitude: 51.388218;"
             scale="0.4 0.4 0.4"
         >
             <a-entity look-at="#camera">
@@ -172,6 +179,7 @@
         </a-entity>
     </a-scene>
 
+    <!-- UI -->
     <div id="info">
         <span id="status-dot" class="waiting"></span>
         <span id="distance-text">دریافت GPS...</span>
@@ -184,6 +192,7 @@
 
     <div id="coords">📍 <span id="gps-coords">--</span></div>
 
+    <!-- Debug Panel -->
     <div id="debug-panel">
         <div style="color:#888; margin-bottom:5px;">📋 لاگ رویدادها:</div>
         <div id="log-content"></div>
@@ -205,10 +214,10 @@
         }
 
         // ============================================================
-        //  تنظیمات - مختصات به موقعیت فعلی شما تغییر کرده
+        //  تنظیمات
         // ============================================================
-        const TARGET_LAT = 35.693694;
-        const TARGET_LNG = 51.559429;
+        const TARGET_LAT = 35.724228;
+        const TARGET_LNG = 51.388218;
         let isGpsReady = false;
         let updateInterval = null;
         let gpsChecked = false;
@@ -255,6 +264,9 @@
             return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         }
 
+        // ============================================================
+        //  بررسی وجود کامپوننت‌ها (هر ۲ ثانیه یکبار تا ثبت شوند)
+        // ============================================================
         function checkComponents() {
             if (gpsChecked) return;
             
@@ -264,16 +276,22 @@
             if (camComp && targetComp) {
                 gpsChecked = true;
                 addLog('✅ کامپوننت‌های GPS با موفقیت ثبت شدند!', 'success');
+                // یکبار ناوبری را به‌روز کن
                 updateNavigation();
             } else {
                 addLog('⏳ در انتظار ثبت کامپوننت‌های GPS...', 'warn');
             }
         }
 
+        // ============================================================
+        //  به‌روزرسانی ناوبری
+        // ============================================================
         function updateNavigation() {
             try {
                 const camComp = cameraEl.components['gps-camera'];
-                if (!camComp) return;
+                if (!camComp) {
+                    return;
+                }
                 if (!camComp.currentCoords) {
                     if (!isGpsReady) {
                         statusDot.className = 'waiting';
@@ -339,10 +357,14 @@
             }
         }
 
+        // ============================================================
+        //  راه‌اندازی
+        // ============================================================
         function init() {
             addLog('🚀 شروع WebAR', 'info');
             addLog(`🎯 هدف: ${TARGET_LAT}, ${TARGET_LNG}`, 'info');
 
+            // دسترسی دوربین
             if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                 navigator.mediaDevices.getUserMedia({ video: true })
                     .then(() => addLog('✅ دوربین در دسترس', 'success'))
@@ -353,6 +375,7 @@
                     });
             }
 
+            // GPS مرورگر (فقط برای لاگ)
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
                     pos => addLog(`✅ GPS مرورگر: ${pos.coords.latitude}, ${pos.coords.longitude}`, 'success'),
@@ -361,9 +384,11 @@
                 );
             }
 
+            // رویدادهای صحنه
             scene.addEventListener('loaded', () => {
                 addLog('✅ صحنه بارگذاری شد', 'success');
                 hideLoading();
+                // شروع بررسی کامپوننت‌ها
                 setTimeout(checkComponents, 1000);
             });
 
@@ -379,8 +404,10 @@
                 hideLoading();
             });
 
+            // بررسی دوره‌ای کامپوننت‌ها (هر ۲ ثانیه)
             setInterval(checkComponents, 2000);
 
+            // تایمر اضطراری (۱۰ ثانیه)
             setTimeout(() => {
                 if (!loading.classList.contains('hidden')) {
                     addLog('⏰ تایمر اضطراری اجرا شد', 'warn');
@@ -388,10 +415,12 @@
                 }
             }, 10000);
 
+            // شروع ناوبری (هر ۵۰۰ میلی‌ثانیه)
             updateInterval = setInterval(updateNavigation, 500);
             addLog('🔄 ناوبری فعال شد', 'info');
         }
 
+        // خطاهای کلی
         window.onerror = function(message, source, lineno) {
             addLog(`🔥 خطا: ${message} (${source}:${lineno})`, 'error');
             hideLoading();
